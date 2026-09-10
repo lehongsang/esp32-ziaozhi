@@ -64,6 +64,10 @@ void Application::Initialize() {
     // Setup the display
     auto display = board.GetDisplay();
     display->SetupUI();
+
+    // Apply assets partition (loads full multilingual/Vietnamese Noto Sans font, custom skins, emojis)
+    Assets::GetInstance().Apply(true);
+
     // Print board name/version info
     display->SetChatMessage("system", SystemInfo::GetUserAgent().c_str());
 

@@ -29,6 +29,20 @@ set(SOURCES "audio/audio_codec.cc"
             "display/lvgl_display/gif/gifdec.c"
             "display/lvgl_display/jpg/image_to_jpeg.cpp"
             "display/lvgl_display/jpg/jpeg_to_image.c"
+            "display/buddy_ui/screen_manager.cc"
+            "display/buddy_ui/buddy_home_screen.cc"
+            "display/buddy_ui/today_quest_screen.cc"
+            "display/buddy_ui/quest_subflow_screen.cc"
+            "display/buddy_ui/quiz_repository.cc"
+            "display/buddy_ui/ai_tutor_screen.cc"
+            "display/buddy_ui/savings_screen.cc"
+            "display/buddy_ui/family_moment_screen.cc"
+            "display/buddy_ui/settings_screen.cc"
+            "display/buddy_ui/assets/buddy_bg_day.c"
+            "display/buddy_ui/assets/buddy_bg_night.c"
+            "display/buddy_ui/assets/buddy_bg_tutor.c"
+            "display/buddy_ui/assets/buddy_piggy_cheer.c"
+            "display/buddy_ui/assets/buddy_reward_corn.c"
             "protocols/protocol.cc"
             "protocols/text_glyph_payload.cc"
             "protocols/mqtt_protocol.cc"
@@ -43,7 +57,7 @@ set(SOURCES "audio/audio_codec.cc"
             "main.cc"
             )
 
-set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "audio" "audio/demuxer" "protocols")
+set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "display/buddy_ui" "audio" "audio/demuxer" "protocols")
 
 # Add board common files
 list(APPEND SOURCES

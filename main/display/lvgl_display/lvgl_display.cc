@@ -141,23 +141,7 @@ LvglDisplay::~LvglDisplay() {
 }
 
 void LvglDisplay::SetStatus(const char* status) {
-    if (!setup_ui_called_) {
-        ESP_LOGW(TAG, "SetStatus('%s') called before SetupUI() - message will be lost!", status);
-    }
-    DisplayLockGuard lock(this);
-    if (status_label_ == nullptr) {
-        if (setup_ui_called_) {
-            ESP_LOGW(TAG,
-                     "SetStatus('%s') failed: status_label_ is nullptr (SetupUI() was called but "
-                     "label not created)",
-                     status);
-        }
-        return;
-    }
-    lv_label_set_text(status_label_, status);
-    lv_obj_remove_flag(status_label_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(notification_label_, LV_OBJ_FLAG_HIDDEN);
-
+    ESP_LOGI(TAG, "Status: %s", status ? status : "");
     last_status_update_time_ = std::chrono::system_clock::now();
 }
 
@@ -166,26 +150,7 @@ void LvglDisplay::ShowNotification(const std::string& notification, int duration
 }
 
 void LvglDisplay::ShowNotification(const char* notification, int duration_ms) {
-    if (!setup_ui_called_) {
-        ESP_LOGW(TAG, "ShowNotification('%s') called before SetupUI() - message will be lost!",
-                 notification);
-    }
-    DisplayLockGuard lock(this);
-    if (notification_label_ == nullptr) {
-        if (setup_ui_called_) {
-            ESP_LOGW(TAG,
-                     "ShowNotification('%s') failed: notification_label_ is nullptr (SetupUI() was "
-                     "called but label not created)",
-                     notification);
-        }
-        return;
-    }
-    lv_label_set_text(notification_label_, notification);
-    lv_obj_remove_flag(notification_label_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(status_label_, LV_OBJ_FLAG_HIDDEN);
-
-    esp_timer_stop(notification_timer_);
-    ESP_ERROR_CHECK(esp_timer_start_once(notification_timer_, duration_ms * 1000));
+    ESP_LOGI(TAG, "Notification (%d ms): %s", duration_ms, notification ? notification : "");
 }
 
 void LvglDisplay::UpdateStatusBar(bool update_all) {

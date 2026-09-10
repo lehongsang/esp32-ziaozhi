@@ -72,56 +72,39 @@ private:
         adc_battery_monitor_ = new AdcBatteryMonitor(ADC_UNIT_1, ADC_CHANNEL_8, 200000, 200000, GPIO_NUM_NC);
     }
 
-    static void TouchTask(void *arg) {
-        auto *self = static_cast<FreenoveESP32S3Display*>(arg);
-        auto &app = Application::GetInstance();
-
-        uint32_t last_tap = 0;
-        uint32_t down_start = 0;
-        bool down = false;
-
-        while (true) {
-            bool t;
-            uint16_t x, y;
-            self->touch_.Read(t, x, y);
-
-            uint32_t now = esp_timer_get_time() / 1000;
-
-            if (t) {
-                if (!down) {
-                    down = true;
-                    down_start = now;
-                }
-            }
-
-            if (!t && down) {
-                down = false;
-
-                uint32_t press = now - down_start;
-
-                // long tap
-                if (press > 3000) {
-                    self->EnterWifiConfigMode();
-                } else {
-                    // double tap
-                    if (now - last_tap < 250) {
-                        app.StartListening();
-                        last_tap = 0;
-                    } else {
-                        // single tap
-                        app.ToggleChatState();
-                        last_tap = now;
-                    }
-                }
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(50));
+    static void TouchInputReadCallback(lv_indev_t* indev, lv_indev_data_t* data) {
+        auto* self = static_cast<FreenoveESP32S3Display*>(lv_indev_get_user_data(indev));
+        if (!self) return;
+        bool touched = false;
+        uint16_t raw_x = 0, raw_y = 0;
+        if (self->touch_.Read(touched, raw_x, raw_y) && touched) {
+            data->state = LV_INDEV_STATE_PRESSED;
+            // Map FT6336U portrait (240x320) to landscape display (320x240)
+            int32_t x = raw_y;
+            int32_t y = 239 - raw_x;
+            if (x < 0) x = 0;
+            if (x > 319) x = 319;
+            if (y < 0) y = 0;
+            if (y > 239) y = 239;
+            data->point.x = x;
+            data->point.y = y;
+        } else {
+            data->state = LV_INDEV_STATE_RELEASED;
         }
     }
 
     void InitializeTouch() {
-        if (!touch_.Init(codec_i2c_bus_, 0x38)) return;
-        xTaskCreatePinnedToCore(TouchTask, "touch_task", 4096, this, 5, nullptr, 0);
+        if (!touch_.Init(codec_i2c_bus_, 0x38)) {
+            ESP_LOGE(TAG, "Failed to initialize FT6336U touch driver");
+            return;
+        }
+        
+        lv_indev_t* indev = lv_indev_create();
+        lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+        lv_indev_set_read_cb(indev, TouchInputReadCallback);
+        lv_indev_set_user_data(indev, this);
+        lv_indev_set_disp(indev, lv_display_get_default());
+        ESP_LOGI(TAG, "Touch indev successfully registered with LVGL");
     }
 
     void InitializeI2c() {
