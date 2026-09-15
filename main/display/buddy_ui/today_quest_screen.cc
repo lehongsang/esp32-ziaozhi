@@ -63,9 +63,9 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     // Default items (Math is uncompleted initially to allow playing quiz)
     current_quests_ = {
         {"q_math", "Math homework", "0/10", false},
-        {"q_read", "Read 15 min", "8/15", false},
-        {"q_move", "Move 20 min", "0/20", false},
-        {"q_clean", "Clean room", "0/1", false}
+        {"q_read", "English reading", "0/2", false},
+        {"q_move", "Do exercise", "20 min", false},
+        {"q_parent", "Parent's quest", "0/1", false}
     };
     SetQuests(current_quests_);
 
@@ -131,7 +131,7 @@ void TodayQuestScreen::RenderItem(const QuestItemData& item) {
         lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_SPORTS_ESPORTS);
     } else {
         lv_obj_set_style_bg_color(badge, lv_color_hex(0xFFB703), 0); // Amber
-        lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_HOME);
+        lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_PERSON);
     }
 
     // 2. Title Text (Auto expands to fill middle space)

@@ -33,6 +33,9 @@ public:
 
     void OnScreenChanged(std::function<void(BuddyScreenId new_screen)> callback);
 
+    void SetIndicatorsVisible(bool visible);
+    void SetTileviewScrollable(bool scrollable);
+
 private:
     BuddyScreenManager();
     ~BuddyScreenManager();

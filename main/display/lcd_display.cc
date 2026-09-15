@@ -894,12 +894,14 @@ void LcdDisplay::SetupUI() {
                           LV_FLEX_ALIGN_CENTER);
     lv_obj_set_scrollbar_mode(top_bar_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_align(top_bar_, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_remove_flag(top_bar_, LV_OBJ_FLAG_CLICKABLE);
 
     // Left icon
     network_label_ = lv_label_create(top_bar_);
     lv_label_set_text(network_label_, "");
     lv_obj_set_style_text_font(network_label_, icon_font, 0);
     lv_obj_set_style_text_color(network_label_, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_remove_flag(network_label_, LV_OBJ_FLAG_CLICKABLE);
 
     // Right icons container
     lv_obj_t* right_icons = lv_obj_create(top_bar_);
@@ -910,17 +912,20 @@ void LcdDisplay::SetupUI() {
     lv_obj_set_flex_flow(right_icons, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(right_icons, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
+    lv_obj_remove_flag(right_icons, LV_OBJ_FLAG_CLICKABLE);
 
     mute_label_ = lv_label_create(right_icons);
     lv_label_set_text(mute_label_, "");
     lv_obj_set_style_text_font(mute_label_, icon_font, 0);
     lv_obj_set_style_text_color(mute_label_, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_remove_flag(mute_label_, LV_OBJ_FLAG_CLICKABLE);
 
     battery_label_ = lv_label_create(right_icons);
     lv_label_set_text(battery_label_, "");
     lv_obj_set_style_text_font(battery_label_, icon_font, 0);
     lv_obj_set_style_text_color(battery_label_, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_margin_left(battery_label_, lvgl_theme->spacing(2), 0);
+    lv_obj_remove_flag(battery_label_, LV_OBJ_FLAG_CLICKABLE);
 
     /* Layer 2: Status bar - for center text labels */
     status_bar_ = lv_obj_create(screen);
@@ -934,6 +939,7 @@ void LcdDisplay::SetupUI() {
     lv_obj_set_scrollbar_mode(status_bar_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_layout(status_bar_, LV_LAYOUT_NONE, 0);  // Use absolute positioning
     lv_obj_align(status_bar_, LV_ALIGN_TOP_MID, 0, 0);        // Overlap with top_bar_
+    lv_obj_remove_flag(status_bar_, LV_OBJ_FLAG_CLICKABLE);
 
     notification_label_ = lv_label_create(status_bar_);
     lv_obj_set_width(notification_label_, LV_HOR_RES * 0.75);
@@ -942,6 +948,7 @@ void LcdDisplay::SetupUI() {
     lv_label_set_text(notification_label_, "");
     lv_obj_align(notification_label_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(notification_label_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(notification_label_, LV_OBJ_FLAG_CLICKABLE);
 
     status_label_ = lv_label_create(status_bar_);
     lv_obj_set_width(status_label_, LV_HOR_RES * 0.75);
@@ -951,6 +958,7 @@ void LcdDisplay::SetupUI() {
     lv_label_set_text(status_label_, "");
     lv_obj_align(status_label_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(status_label_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(status_label_, LV_OBJ_FLAG_CLICKABLE);
 
 #if CONFIG_USE_MULTILINE_CHAT_MESSAGE
     /* Bottom bar - auto height, grows upward with wrapped text */

@@ -83,6 +83,9 @@ void BuddyScreenManager::CreatePageIndicators(lv_obj_t* parent) {
 }
 
 void BuddyScreenManager::UpdateIndicators(int active_index) {
+    if (!indicator_container_ || lv_obj_has_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
     for (int i = 0; i < static_cast<int>(BuddyScreenId::kScreenCount); ++i) {
         if (indicator_dots_[i]) {
             if (i == active_index) {
@@ -130,4 +133,22 @@ void BuddyScreenManager::TileviewScrollCb(lv_event_t* e) {
 
 void BuddyScreenManager::OnScreenChanged(std::function<void(BuddyScreenId new_screen)> callback) {
     on_screen_changed_ = callback;
+}
+
+void BuddyScreenManager::SetIndicatorsVisible(bool visible) {
+    if (!indicator_container_) return;
+    if (visible) {
+        lv_obj_clear_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void BuddyScreenManager::SetTileviewScrollable(bool scrollable) {
+    if (!tileview_) return;
+    if (scrollable) {
+        lv_obj_add_flag(tileview_, LV_OBJ_FLAG_SCROLLABLE);
+    } else {
+        lv_obj_remove_flag(tileview_, LV_OBJ_FLAG_SCROLLABLE);
+    }
 }

@@ -12,6 +12,10 @@ extern const lv_image_dsc_t buddy_bg_night;
 extern const lv_image_dsc_t buddy_bg_tutor;
 extern const lv_image_dsc_t buddy_piggy_cheer;
 extern const lv_image_dsc_t buddy_reward_corn;
+extern const lv_image_dsc_t goal_art_bike;
+extern const lv_image_dsc_t goal_art_robot;
+extern const lv_image_dsc_t goal_art_lego;
+extern const lv_image_dsc_t goal_art_piggy;
 
 #ifdef __cplusplus
 }
