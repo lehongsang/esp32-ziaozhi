@@ -15,6 +15,8 @@ enum class QuestSubflowState {
     kDoQuiz,
     kMidCheer,
     kMovementTimer,
+    kFeedPiggyWaiting,
+    kFeedPiggyFed,
     kCompleted,
     kReward
 };
@@ -61,6 +63,10 @@ private:
     lv_obj_t* movement_tip_lbl_ = nullptr;
     size_t movement_tip_idx_ = 0;
 
+    // Feed Piggy Session Data
+    size_t feed_count_ = 0;
+    std::string last_fed_food_name_ = "";
+
     // Callbacks
     std::function<void(const std::string& quest_id)> on_completed_;
     std::function<void()> on_close_;
@@ -72,6 +78,8 @@ private:
     void RenderDoQuiz();
     void RenderMidCheer();
     void RenderMovementTimer();
+    void RenderFeedPiggyWaiting();
+    void RenderFeedPiggyFed(const std::string& food_name);
     void RenderCompleted();
     void RenderReward();
 
@@ -81,6 +89,9 @@ private:
     }
     bool IsMovementQuest() const {
         return current_quest_id_ == "q3" || current_quest_id_ == "q_move" || current_quest_id_.find("move") != std::string::npos;
+    }
+    bool IsFeedQuest() const {
+        return current_quest_id_ == "q_feed" || current_quest_id_.find("feed") != std::string::npos;
     }
     void HandleOptionSelected(int selected_index, lv_obj_t* btn);
     void AdvanceNextQuestion();
@@ -98,6 +109,7 @@ private:
     static void OnMovementTimerTickCb(lv_timer_t* timer);
     static void OnMovementPlayPauseBtnCb(lv_event_t* e);
     static void OnMovementFinishBtnCb(lv_event_t* e);
+    static void OnFeedFoodBtnCb(lv_event_t* e);
 };
 
 

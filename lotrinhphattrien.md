@@ -153,21 +153,28 @@ Giao diện trên thiết bị được tổ chức theo kiến trúc **5 Màn H
 
 ## 🚀 Kế Hoạch Triển Khai Thực Tế Từng Bước
 
-### GIAI ĐOẠN 1: LẬP TRÌNH 5 MÀN HÌNH CHÍNH & LUỒNG NHIỆM VỤ (FIRMWARE)
+### GIAI ĐOẠN 1: LẬP TRÌNH 5 MÀN HÌNH CHÍNH & LUỒNG NHIỆM VỤ (FIRMWARE) - [ĐÃ HOÀN THÀNH ✅]
 *Thời gian: 3 tuần — Thực hiện trực tiếp trên bo mạch ESP32-S3 Display 2.8" hiện có*
 
-* **Bước 1.1: Khởi tạo Bộ Quản Lý Giao Diện (Screen Manager):**
-  - Viết `ScreenManager` bằng C++/LVGL: Hỗ trợ chuyển đổi giữa 5 màn hình chính bằng cử chỉ vuốt ngang (Swipe Left/Right) và chuyển màn hình bằng sự kiện.
-* **Bước 1.2: Lập trình Màn 1 (Buddy Home) & Màn 3 (AI Tutor):**
-  - Màn 1: Đọc giờ hệ thống, hiển thị chú heo động, kết nối trạng thái Wi-Fi/Pin thật.
-  - Màn 3: Dựng robot AI gia sư, gán sự kiện bấm nút Micro để bắt đầu thu âm Voice.
-* **Bước 1.3: Lập trình Màn 2 (Today's Quest) & Toàn Bộ Luồng Phụ (Sub-flow):**
+* **Bước 1.1: Khởi tạo Bộ Quản Lý Giao Diện (Screen Manager):** [✅ Hoàn thành]
+  - Viết `ScreenManager` bằng C++/LVGL 9: Quản lý 5 màn hình chính (Home, Quest, AI Tutor, Savings/Dream Goal, Family Moment) bằng cử chỉ vuốt ngang mượt mà (Swipe TileView), đi kèm thanh chấm chỉ báo trang (Page Indicator Dots) 5 chấm thông minh.
+  - Tích hợp thanh kéo **Top Notch Pull Bar** ở mép trên màn hình.
+  - Xây dựng **Trung Tâm Điều Khiển Dropdown (Smartphone Control Center)**: Vuốt từ trên xuống dưới (hoặc chạm vào tai thỏ phía trên) để thả xuống bảng điều khiển Glassmorphism full màn hình với các widget tương tác thời gian thực:
+    - 📡 **Wi-Fi Tile:** Xem trạng thái kết nối, SSID/IP, nút kích hoạt cấu hình Web AP `192.168.4.1`.
+    - 🔊 **Loa & Âm lượng Tile:** Thanh trượt Slider chỉnh âm lượng phần cứng trực tiếp (0–100%) qua `AudioCodec`, nút bấm Mute / Unmute nhanh.
+    - ☀️ **Độ sáng màn hình Tile:** Thanh trượt Slider điều chỉnh độ sáng đèn nền trực tiếp qua `Backlight`.
+    - 🔋 **Thông tin pin & hệ thống Tile:** Mức pin thực tế, thông tin phiên bản firmware `MB BUDDY v1.0.0`.
+    - ✖️ Nút đóng và thanh kéo đáy (Swipe up/Tap) để thu gọn bảng điều khiển.
+* **Bước 1.2: Lập trình Màn 1 (Buddy Home) & Màn 3 (AI Tutor):** [✅ Hoàn thành]
+  - Màn 1: Đọc giờ hệ thống, hiển thị chú heo động 3D, kết nối trạng thái Wi-Fi/Pin/Cấp độ Level thật.
+  - Màn 3: Dựng robot AI gia sư, gán sự kiện bấm nút Micro để bắt đầu thu âm Voice, sẵn sàng ghép nối luồng WebSocket.
+* **Bước 1.3: Lập trình Màn 2 (Today's Quest) & Toàn Bộ Luồng Phụ (Sub-flow):** [✅ Hoàn thành]
   - Xây dựng danh sách quest thật từ bộ nhớ Flash.
-  - Lập trình bộ máy thi trắc nghiệm (Quiz Engine): Hiển thị câu hỏi `8 x 6`, bắt sự kiện cảm ứng 4 nút chọn đáp án, kiểm tra đúng/sai, chuyển tiếp câu hỏi.
-  - Lập trình màn hình nhận thưởng bắp, cơ chế kéo bắp cho heo ăn và thanh tăng cấp XP.
-* **Bước 1.4: Lập trình Màn 4 (Savings) & Màn 5 (Family Moment):**
-  - Màn 4: Hiển thị mục tiêu 2.000.000đ, tính toán vẽ vòng cung tiến độ `%`.
-  - Màn 5: Hiển thị icon chờ khi chưa có tin nhắn; hỗ trợ nhận cấu trúc dữ liệu JSON tin nhắn để hiển thị ngay lời nhắn của bố mẹ.
+  - Lập trình bộ máy thi trắc nghiệm (Quiz Engine): Hiển thị câu hỏi, bắt sự kiện cảm ứng 4 nút chọn đáp án, kiểm tra đúng/sai, chuyển tiếp câu hỏi.
+  - Lập trình màn hình đọc truyện Audio Story & nhận thưởng bắp, cơ chế kéo bắp cho heo ăn và thanh tăng cấp XP.
+* **Bước 1.4: Lập trình Màn 4 (Savings) & Màn 5 (Family Moment):** [✅ Hoàn thành]
+  - Màn 4 (Savings & Dream Goal): Thiết kế Glassmorphism hiện đại, hình ảnh 3D mục tiêu khổ lớn (Xe đạp, Robot, Lego...), khung tiến độ tích lũy gọn gàng, màn hình chọn và đổi mục tiêu tương tác mượt mà lưu NVS.
+  - Màn 5 (Family Moment): Thiết kế thiệp thư Postcard ấm áp phong cách Glassmorphism: hiển thị badge người gửi (`👩 Mom`, `👨 Dad`, `🏡 Family`), mốc thời gian, nội dung lời nhắn yêu thương, nút tương tác bắn tim (`Send Love ❤️` $\rightarrow$ `Loved! 💖`), và trạng thái chờ nhận tin nhắn (`💌 No Messages Yet`).
 
 ---
 

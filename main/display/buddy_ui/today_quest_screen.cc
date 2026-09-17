@@ -1,4 +1,5 @@
 #include "today_quest_screen.h"
+#include "buddy_sync_service.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 
@@ -18,8 +19,8 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, 0);
     lv_obj_set_flex_flow(container_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(container_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_top(container_, 6, 0);
-    lv_obj_set_style_pad_bottom(container_, 6, 0);
+    lv_obj_set_style_pad_top(container_, 10, 0);
+    lv_obj_set_style_pad_bottom(container_, 2, 0);
     lv_obj_clear_flag(container_, LV_OBJ_FLAG_SCROLLABLE);
 
     // 2. Header Title
@@ -31,7 +32,7 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     // 3. Quest List Container (Scrollable)
     quest_list_ = lv_obj_create(container_);
     lv_obj_remove_style_all(quest_list_);
-    lv_obj_set_size(quest_list_, lv_pct(94), 164);
+    lv_obj_set_size(quest_list_, lv_pct(94), 146);
     lv_obj_set_flex_flow(quest_list_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(quest_list_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_gap(quest_list_, 6, 0);
@@ -42,7 +43,8 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_label_set_text(more_arrow_, MATERIAL_SYMBOLS_KEYBOARD_ARROW_DOWN);
     lv_obj_set_style_text_font(more_arrow_, &font_material_symbols_20_4, 0);
     lv_obj_set_style_text_color(more_arrow_, lv_color_hex(0x94A3B8), 0);
-    lv_obj_set_style_margin_top(more_arrow_, 2, 0);
+    lv_obj_set_style_margin_top(more_arrow_, 0, 0);
+    lv_obj_add_flag(more_arrow_, LV_OBJ_FLAG_HIDDEN); // Hidden by default unless > 3 items
 
     // 5. Initialize Subflow Screen Overlay (Created on parent tile to cover full screen)
     subflow_screen_.Create(parent);
@@ -55,13 +57,15 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
             }
         }
         SetQuests(current_quests_);
+        BuddySyncService::GetInstance().NotifyQuestCompleted(completed_id);
         if (on_quest_selected_) {
             on_quest_selected_(completed_id);
         }
     });
 
-    // Default items (Math is uncompleted initially to allow playing quiz)
+    // Default items
     current_quests_ = {
+        {"q_feed", "Feed Piggy", "0/3", false},
         {"q_math", "Math homework", "0/10", false},
         {"q_read", "English reading", "0/2", false},
         {"q_move", "Do exercise", "20 min", false},
@@ -120,7 +124,10 @@ void TodayQuestScreen::RenderItem(const QuestItemData& item) {
     lv_obj_set_style_text_color(badge_icon, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(badge_icon);
 
-    if (item.id.find("math") != std::string::npos) {
+    if (item.id.find("feed") != std::string::npos) {
+        lv_obj_set_style_bg_color(badge, lv_color_hex(0xEC4899), 0); // Rose Pink
+        lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_FAVORITE);
+    } else if (item.id.find("math") != std::string::npos) {
         lv_obj_set_style_bg_color(badge, lv_color_hex(0x22C55E), 0); // Green
         lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_EDIT_SQUARE);
     } else if (item.id.find("read") != std::string::npos) {

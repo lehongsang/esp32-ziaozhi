@@ -10,6 +10,7 @@
 #include "system_info.h"
 #include "text_glyph_payload.h"
 #include "websocket_protocol.h"
+#include "display/buddy_ui/buddy_sync_service.h"
 
 #include <driver/gpio.h>
 #include <esp_log.h>
@@ -312,9 +313,15 @@ void Application::HandleNetworkConnectedEvent() {
     // Update the status bar immediately to show the network state
     auto display = Board::GetInstance().GetDisplay();
     display->UpdateStatusBar(true);
+
+    // Start Buddy Backend Sync Service
+    BuddySyncService::GetInstance().Start();
 }
 
 void Application::HandleNetworkDisconnectedEvent() {
+    // Stop Buddy Backend Sync Service
+    BuddySyncService::GetInstance().Stop();
+
     // Close current conversation when network disconnected
     auto state = GetDeviceState();
     if (state == kDeviceStateNotifying) {

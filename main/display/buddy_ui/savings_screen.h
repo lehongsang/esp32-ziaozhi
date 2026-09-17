@@ -48,6 +48,11 @@ public:
 private:
     void LoadFromNVS();
     void SaveToNVS();
+    bool IsGoalConfigured(GoalType type) const;
+    void SetGoalConfigured(GoalType type, bool configured);
+    int32_t GetSavedGoalPrice(GoalType type) const;
+    void SetSavedGoalPrice(GoalType type, int32_t price);
+    void RefreshGoalSelectionList();
     void UpdateActiveGoalUI(bool animate = true);
     void UpdatePriceInputDisplay();
 
@@ -59,8 +64,8 @@ private:
     const GoalItemDef* FindGoalDef(GoalType type) const;
 
     static void OnCreateGoalClicked(lv_event_t* e);
-    static void OnFeedPiggyClicked(lv_event_t* e);
     static void OnChangeGoalClicked(lv_event_t* e);
+    static void OnEditPriceClicked(lv_event_t* e);
     static void OnBackToPreviousClicked(lv_event_t* e);
     static void OnGoalSelected(lv_event_t* e);
 
@@ -77,13 +82,9 @@ private:
 
     // View: Active Goal Elements
     lv_obj_t* goal_title_label_ = nullptr;
-    lv_obj_t* goal_card_btn_ = nullptr;
     lv_obj_t* goal_image_ = nullptr;
-    lv_obj_t* percent_label_ = nullptr;
     lv_obj_t* amount_label_ = nullptr;
     lv_obj_t* bar_progress_ = nullptr;
-    lv_obj_t* btn_feed_piggy_ = nullptr;
-    lv_obj_t* btn_change_goal_ = nullptr;
 
     // View: Goal Selection Elements
     lv_obj_t* goal_list_container_ = nullptr;

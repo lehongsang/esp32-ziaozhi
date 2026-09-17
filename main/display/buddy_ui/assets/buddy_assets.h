@@ -16,6 +16,11 @@ extern const lv_image_dsc_t goal_art_bike;
 extern const lv_image_dsc_t goal_art_robot;
 extern const lv_image_dsc_t goal_art_lego;
 extern const lv_image_dsc_t goal_art_piggy;
+extern const lv_image_dsc_t buddy_piggy_hungry;
+extern const lv_image_dsc_t buddy_piggy_happy;
+extern const lv_image_dsc_t buddy_food_corn;
+extern const lv_image_dsc_t buddy_food_potato;
+extern const lv_image_dsc_t buddy_food_carrot;
 
 #ifdef __cplusplus
 }

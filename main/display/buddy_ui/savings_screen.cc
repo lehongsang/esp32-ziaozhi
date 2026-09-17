@@ -1,5 +1,6 @@
 #include "savings_screen.h"
 #include "screen_manager.h"
+#include "buddy_sync_service.h"
 #include "assets/buddy_assets.h"
 #include "settings.h"
 
@@ -52,6 +53,32 @@ const GoalItemDef* SavingsScreen::FindGoalDef(GoalType type) const {
     return nullptr;
 }
 
+bool SavingsScreen::IsGoalConfigured(GoalType type) const {
+    Settings settings("savings", false);
+    return settings.GetBool(("cfg_" + std::to_string((int)type)).c_str(), false);
+}
+
+void SavingsScreen::SetGoalConfigured(GoalType type, bool configured) {
+    Settings settings("savings", true);
+    settings.SetBool(("cfg_" + std::to_string((int)type)).c_str(), configured);
+}
+
+int32_t SavingsScreen::GetSavedGoalPrice(GoalType type) const {
+    Settings settings("savings", false);
+    int32_t p = settings.GetInt(("gp_" + std::to_string((int)type)).c_str(), 0);
+    if (p > 0) return p;
+    if (type == current_goal_type_ && target_amount_ > 0) {
+        return target_amount_;
+    }
+    const auto* def = FindGoalDef(type);
+    return def ? def->default_price : 2000000;
+}
+
+void SavingsScreen::SetSavedGoalPrice(GoalType type, int32_t price) {
+    Settings settings("savings", true);
+    settings.SetInt(("gp_" + std::to_string((int)type)).c_str(), price);
+}
+
 void SavingsScreen::LoadFromNVS() {
     Settings settings("savings", false);
     has_active_goal_ = settings.GetBool("has_goal", false);
@@ -63,6 +90,9 @@ void SavingsScreen::LoadFromNVS() {
 
     if (current_goal_type_ == GoalType::kNone || target_amount_ <= 0) {
         has_active_goal_ = false;
+    } else {
+        SetGoalConfigured(current_goal_type_, true);
+        SetSavedGoalPrice(current_goal_type_, target_amount_);
     }
 }
 
@@ -105,145 +135,124 @@ void SavingsScreen::BuildEmptyView() {
     view_empty_ = lv_obj_create(root_container_);
     lv_obj_remove_style_all(view_empty_);
     lv_obj_set_size(view_empty_, lv_pct(100), lv_pct(100));
-    lv_obj_set_flex_flow(view_empty_, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(view_empty_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_top(view_empty_, 24, 0);
-    lv_obj_set_style_pad_bottom(view_empty_, 12, 0);
-    lv_obj_set_style_pad_left(view_empty_, 8, 0);
-    lv_obj_set_style_pad_right(view_empty_, 8, 0);
     lv_obj_clear_flag(view_empty_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Header Title (Centered)
-    lv_obj_t* title = lv_label_create(view_empty_);
-    lv_label_set_text(title, "Dream Goal");
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_margin_bottom(title, 4, 0);
-
-    // 3D Dream Piggy Bank Artwork (76x76)
-    lv_obj_t* center_card = lv_button_create(view_empty_);
-    lv_obj_remove_style_all(center_card);
-    lv_obj_set_size(center_card, 76, 76);
-    lv_obj_set_style_pad_all(center_card, 0, 0);
-    lv_obj_add_event_cb(center_card, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
-
-    lv_obj_t* img_piggy = lv_image_create(center_card);
+    // 1. Center 160x160 Dream Piggy 3D Artwork (Zoomed & Huge)
+    lv_obj_t* img_piggy = lv_image_create(view_empty_);
     lv_image_set_src(img_piggy, &goal_art_piggy);
-    lv_obj_set_size(img_piggy, 76, 76);
-    lv_obj_center(img_piggy);
+    lv_obj_set_size(img_piggy, 160, 160);
+    lv_obj_align(img_piggy, LV_ALIGN_CENTER, 0, -12);
+    lv_obj_add_flag(img_piggy, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(img_piggy, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
 
-    // Subtitle & Hint (100% English & Centered)
-    lv_obj_t* sub = lv_label_create(view_empty_);
-    lv_label_set_text(sub, "No Dream Goal Set");
-    lv_obj_set_style_text_color(sub, lv_color_hex(0xE2E8F0), 0);
-    lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_margin_top(sub, 4, 0);
-    lv_obj_set_style_margin_bottom(sub, 6, 0);
+    // 2. Top Floating Glass Pill Header
+    lv_obj_t* top_pill = lv_obj_create(view_empty_);
+    lv_obj_remove_style_all(top_pill);
+    lv_obj_set_size(top_pill, 140, 22);
+    lv_obj_align(top_pill, LV_ALIGN_TOP_MID, 0, 6);
+    lv_obj_set_style_bg_color(top_pill, lv_color_hex(0x161328), 0);
+    lv_obj_set_style_bg_opa(top_pill, LV_OPA_80, 0);
+    lv_obj_set_style_radius(top_pill, 11, 0);
+    lv_obj_set_style_border_color(top_pill, lv_color_hex(0xF59E0B), 0);
+    lv_obj_set_style_border_opa(top_pill, LV_OPA_30, 0);
+    lv_obj_set_style_border_width(top_pill, 1, 0);
+    lv_obj_set_flex_flow(top_pill, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top_pill, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(top_pill, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(top_pill, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(top_pill, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
 
-    // Action Button: Create Goal (Centered)
-    lv_obj_t* btn_create = lv_button_create(view_empty_);
-    lv_obj_set_size(btn_create, 140, 26);
-    lv_obj_set_style_radius(btn_create, 13, 0);
-    lv_obj_set_style_bg_color(btn_create, lv_color_hex(0x22C55E), 0);
-    lv_obj_set_style_pad_all(btn_create, 0, 0);
-    lv_obj_add_event_cb(btn_create, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
+    lv_obj_t* title = lv_label_create(top_pill);
+    lv_label_set_text(title, "✨ Dream Goal");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFD166), 0);
 
-    lv_obj_t* c_lbl = lv_label_create(btn_create);
-    lv_label_set_text(c_lbl, "+ Set Dream Goal");
-    lv_obj_set_style_text_color(c_lbl, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(c_lbl);
+    // 3. Bottom Floating Glass Action Card (Golden Sparkle Capsule Pill)
+    lv_obj_t* bottom_card = lv_obj_create(view_empty_);
+    lv_obj_remove_style_all(bottom_card);
+    lv_obj_set_size(bottom_card, 180, 30);
+    lv_obj_align(bottom_card, LV_ALIGN_BOTTOM_MID, 0, -22);
+    lv_obj_set_style_bg_color(bottom_card, lv_color_hex(0x1D142F), 0);
+    lv_obj_set_style_bg_opa(bottom_card, LV_OPA_90, 0);
+    lv_obj_set_style_radius(bottom_card, 15, 0);
+    lv_obj_set_style_border_color(bottom_card, lv_color_hex(0xF59E0B), 0);
+    lv_obj_set_style_border_opa(bottom_card, LV_OPA_80, 0);
+    lv_obj_set_style_border_width(bottom_card, 1, 0);
+    lv_obj_set_flex_flow(bottom_card, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(bottom_card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(bottom_card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(bottom_card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(bottom_card, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* c_lbl = lv_label_create(bottom_card);
+    lv_label_set_text(c_lbl, "✨ Set Dream Goal ✨");
+    lv_obj_set_style_text_color(c_lbl, lv_color_hex(0xFFE082), 0);
 }
 
 void SavingsScreen::BuildActiveGoalView() {
     view_active_goal_ = lv_obj_create(root_container_);
     lv_obj_remove_style_all(view_active_goal_);
     lv_obj_set_size(view_active_goal_, lv_pct(100), lv_pct(100));
-    lv_obj_set_flex_flow(view_active_goal_, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(view_active_goal_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_top(view_active_goal_, 22, 0);
-    lv_obj_set_style_pad_bottom(view_active_goal_, 12, 0);
-    lv_obj_set_style_pad_left(view_active_goal_, 8, 0);
-    lv_obj_set_style_pad_right(view_active_goal_, 8, 0);
     lv_obj_clear_flag(view_active_goal_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 1. Goal Title (Centered)
-    goal_title_label_ = lv_label_create(view_active_goal_);
-    lv_label_set_text(goal_title_label_, current_goal_name_.c_str());
-    lv_obj_set_style_text_color(goal_title_label_, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_align(goal_title_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_margin_bottom(goal_title_label_, 2, 0);
-
-    // 2. Clickable Center 3D Image Component (76x76)
-    goal_card_btn_ = lv_button_create(view_active_goal_);
-    lv_obj_remove_style_all(goal_card_btn_);
-    lv_obj_set_size(goal_card_btn_, 76, 76);
-    lv_obj_set_style_pad_all(goal_card_btn_, 0, 0);
-    lv_obj_set_style_margin_bottom(goal_card_btn_, 2, 0);
-    lv_obj_add_event_cb(goal_card_btn_, OnChangeGoalClicked, LV_EVENT_CLICKED, this);
-
-    goal_image_ = lv_image_create(goal_card_btn_);
+    // 1. Center 160x160 3D Artwork Layer (Zoomed & Huge)
+    goal_image_ = lv_image_create(view_active_goal_);
     lv_image_set_src(goal_image_, &goal_art_bike);
-    lv_obj_set_size(goal_image_, 76, 76);
-    lv_obj_center(goal_image_);
+    lv_obj_set_size(goal_image_, 160, 160);
+    lv_obj_align(goal_image_, LV_ALIGN_CENTER, 0, -12);
+    lv_obj_add_flag(goal_image_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(goal_image_, OnChangeGoalClicked, LV_EVENT_CLICKED, this);
 
-    // 3. Percent Label (Centered)
-    percent_label_ = lv_label_create(view_active_goal_);
-    lv_label_set_text(percent_label_, "0%");
-    lv_obj_set_style_text_color(percent_label_, lv_color_hex(0x22C55E), 0);
-    lv_obj_set_style_text_align(percent_label_, LV_TEXT_ALIGN_CENTER, 0);
+    // 2. Top Floating Glass Pill Header (Centered)
+    lv_obj_t* top_pill = lv_obj_create(view_active_goal_);
+    lv_obj_remove_style_all(top_pill);
+    lv_obj_set_size(top_pill, 160, 22);
+    lv_obj_align(top_pill, LV_ALIGN_TOP_MID, 0, 6);
+    lv_obj_set_style_bg_color(top_pill, lv_color_hex(0x161328), 0);
+    lv_obj_set_style_bg_opa(top_pill, LV_OPA_80, 0);
+    lv_obj_set_style_radius(top_pill, 11, 0);
+    lv_obj_set_style_border_color(top_pill, lv_color_hex(0xF59E0B), 0);
+    lv_obj_set_style_border_opa(top_pill, LV_OPA_30, 0);
+    lv_obj_set_style_border_width(top_pill, 1, 0);
+    lv_obj_set_flex_flow(top_pill, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top_pill, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(top_pill, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(top_pill, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(top_pill, OnChangeGoalClicked, LV_EVENT_CLICKED, this);
 
-    // 4. Amount Balance Label (Centered)
-    amount_label_ = lv_label_create(view_active_goal_);
-    lv_label_set_text(amount_label_, "0 / 3,000,000d");
-    lv_obj_set_style_text_color(amount_label_, lv_color_hex(0xE2E8F0), 0);
+    goal_title_label_ = lv_label_create(top_pill);
+    lv_label_set_text(goal_title_label_, current_goal_name_.c_str());
+    lv_obj_set_style_text_color(goal_title_label_, lv_color_hex(0xFFD166), 0);
+
+    // 3. Bottom Floating Glass Status HUD Card (Tap to Edit Target Price)
+    lv_obj_t* bottom_card = lv_obj_create(view_active_goal_);
+    lv_obj_remove_style_all(bottom_card);
+    lv_obj_set_size(bottom_card, 170, 36);
+    lv_obj_align(bottom_card, LV_ALIGN_BOTTOM_MID, 0, -22);
+    lv_obj_set_style_bg_color(bottom_card, lv_color_hex(0x161328), 0);
+    lv_obj_set_style_bg_opa(bottom_card, LV_OPA_90, 0);
+    lv_obj_set_style_radius(bottom_card, 18, 0);
+    lv_obj_set_style_border_color(bottom_card, lv_color_hex(0xF59E0B), 0);
+    lv_obj_set_style_border_opa(bottom_card, LV_OPA_30, 0);
+    lv_obj_set_style_border_width(bottom_card, 1, 0);
+    lv_obj_set_flex_flow(bottom_card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(bottom_card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(bottom_card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(bottom_card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(bottom_card, OnEditPriceClicked, LV_EVENT_CLICKED, this);
+
+    amount_label_ = lv_label_create(bottom_card);
+    lv_label_set_text(amount_label_, "0 / 2,000,000d");
+    lv_obj_set_style_text_color(amount_label_, lv_color_hex(0x22C55E), 0);
     lv_obj_set_style_text_align(amount_label_, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_margin_bottom(amount_label_, 2, 0);
 
-    // 5. Capsule Progress Bar
-    bar_progress_ = lv_bar_create(view_active_goal_);
-    lv_obj_set_size(bar_progress_, 120, 6);
-    lv_obj_set_style_radius(bar_progress_, 3, 0);
-    lv_obj_set_style_bg_color(bar_progress_, lv_color_hex(0x222638), 0);
+    bar_progress_ = lv_bar_create(bottom_card);
+    lv_obj_set_size(bar_progress_, 140, 4);
+    lv_obj_set_style_radius(bar_progress_, 2, 0);
+    lv_obj_set_style_bg_color(bar_progress_, lv_color_hex(0x1E293B), 0);
     lv_obj_set_style_bg_color(bar_progress_, lv_color_hex(0x22C55E), LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_progress_, 3, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_progress_, 2, LV_PART_INDICATOR);
     lv_bar_set_value(bar_progress_, 0, LV_ANIM_OFF);
-    lv_obj_set_style_margin_bottom(bar_progress_, 4, 0);
-
-    // 6. Action Buttons Row (Compact 24px)
-    lv_obj_t* btn_row = lv_obj_create(view_active_goal_);
-    lv_obj_remove_style_all(btn_row);
-    lv_obj_set_size(btn_row, lv_pct(100), 24);
-    lv_obj_set_flex_flow(btn_row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(btn_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(btn_row, 8, 0);
-
-    // Button 1: Feed Piggy (+50k)
-    btn_feed_piggy_ = lv_button_create(btn_row);
-    lv_obj_set_size(btn_feed_piggy_, 90, 22);
-    lv_obj_set_style_radius(btn_feed_piggy_, 11, 0);
-    lv_obj_set_style_bg_color(btn_feed_piggy_, lv_color_hex(0x22C55E), 0);
-    lv_obj_set_style_pad_all(btn_feed_piggy_, 0, 0);
-    lv_obj_add_event_cb(btn_feed_piggy_, OnFeedPiggyClicked, LV_EVENT_CLICKED, this);
-
-    lv_obj_t* feed_label = lv_label_create(btn_feed_piggy_);
-    lv_label_set_text(feed_label, "+50k Feed Piggy");
-    lv_obj_set_style_text_color(feed_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(feed_label);
-
-    // Button 2: Change Goal
-    btn_change_goal_ = lv_button_create(btn_row);
-    lv_obj_set_size(btn_change_goal_, 90, 22);
-    lv_obj_set_style_radius(btn_change_goal_, 11, 0);
-    lv_obj_set_style_bg_color(btn_change_goal_, lv_color_hex(0x1E293B), 0);
-    lv_obj_set_style_border_color(btn_change_goal_, lv_color_hex(0x3B82F6), 0);
-    lv_obj_set_style_border_width(btn_change_goal_, 1, 0);
-    lv_obj_set_style_pad_all(btn_change_goal_, 0, 0);
-    lv_obj_add_event_cb(btn_change_goal_, OnChangeGoalClicked, LV_EVENT_CLICKED, this);
-
-    lv_obj_t* change_label = lv_label_create(btn_change_goal_);
-    lv_label_set_text(change_label, "Change Goal");
-    lv_obj_set_style_text_color(change_label, lv_color_hex(0x60A5FA), 0);
-    lv_obj_center(change_label);
 }
 
 void SavingsScreen::BuildGoalSelectionView() {
@@ -284,7 +293,7 @@ void SavingsScreen::BuildGoalSelectionView() {
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFB703), 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, 0);
 
-    // Scrollable 10 Goals List (Narrow cards centered horizontally)
+    // Scrollable 10 Goals List
     goal_list_container_ = lv_obj_create(view_select_goal_);
     lv_obj_remove_style_all(goal_list_container_);
     lv_obj_set_size(goal_list_container_, lv_pct(100), 154);
@@ -293,22 +302,32 @@ void SavingsScreen::BuildGoalSelectionView() {
     lv_obj_set_style_pad_gap(goal_list_container_, 5, 0);
     lv_obj_set_scrollbar_mode(goal_list_container_, LV_SCROLLBAR_MODE_OFF);
 
+    RefreshGoalSelectionList();
+}
+
+void SavingsScreen::RefreshGoalSelectionList() {
+    if (!goal_list_container_) return;
+    lv_obj_clean(goal_list_container_);
+
     for (const auto& g : goal_definitions_) {
+        bool is_active = (g.type == current_goal_type_ && has_active_goal_);
+
         lv_obj_t* card = lv_button_create(goal_list_container_);
-        lv_obj_set_size(card, 180, 26);
-        lv_obj_set_style_radius(card, 6, 0);
-        lv_obj_set_style_bg_color(card, lv_color_hex(0x161C28), 0);
-        lv_obj_set_style_border_color(card, lv_color_hex(0x2A324B), 0);
-        lv_obj_set_style_border_width(card, 1, 0);
+        lv_obj_set_size(card, 200, 28);
+        lv_obj_set_style_radius(card, 8, 0);
+        lv_obj_set_style_bg_color(card, is_active ? lv_color_hex(0x231A38) : lv_color_hex(0x161C28), 0);
+        lv_obj_set_style_border_color(card, is_active ? lv_color_hex(0xF59E0B) : lv_color_hex(0x2A324B), 0);
+        lv_obj_set_style_border_width(card, is_active ? 2 : 1, 0);
         lv_obj_set_style_pad_all(card, 0, 0);
 
         lv_obj_add_event_cb(card, OnGoalSelected, LV_EVENT_CLICKED, this);
         lv_obj_set_user_data(card, (void*)(uintptr_t)g.type);
 
-        // Goal Title (Centered)
+        // Centered Goal Name (+ Star if Active)
         lv_obj_t* name_lbl = lv_label_create(card);
-        lv_label_set_text(name_lbl, g.name.c_str());
-        lv_obj_set_style_text_color(name_lbl, lv_color_hex(0xFFFFFF), 0);
+        std::string title_str = (is_active ? "⭐ " : "") + g.name;
+        lv_label_set_text(name_lbl, title_str.c_str());
+        lv_obj_set_style_text_color(name_lbl, is_active ? lv_color_hex(0xFFD166) : lv_color_hex(0xFFFFFF), 0);
         lv_obj_set_style_text_align(name_lbl, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(name_lbl);
     }
@@ -446,6 +465,8 @@ void SavingsScreen::ShowActiveGoalView() {
 }
 
 void SavingsScreen::ShowGoalSelectionView() {
+    RefreshGoalSelectionList();
+
     if (view_empty_) lv_obj_add_flag(view_empty_, LV_OBJ_FLAG_HIDDEN);
     if (view_active_goal_) lv_obj_add_flag(view_active_goal_, LV_OBJ_FLAG_HIDDEN);
     if (view_select_goal_) lv_obj_clear_flag(view_select_goal_, LV_OBJ_FLAG_HIDDEN);
@@ -462,7 +483,8 @@ void SavingsScreen::ShowPriceInputView(GoalType selected_type) {
         if (input_goal_name_label_) {
             lv_label_set_text(input_goal_name_label_, def->name.c_str());
         }
-        input_buffer_ = std::to_string(def->default_price);
+        int32_t saved_price = GetSavedGoalPrice(selected_type);
+        input_buffer_ = std::to_string(saved_price);
         UpdatePriceInputDisplay();
     }
 
@@ -509,12 +531,6 @@ void SavingsScreen::UpdateActiveGoalUI(bool animate) {
     if (target_amount_ > 0) {
         pct = (int)((current_amount_ * 100LL) / target_amount_);
         if (pct > 100) pct = 100;
-    }
-
-    if (percent_label_) {
-        char buf[16];
-        snprintf(buf, sizeof(buf), "%d%%", pct);
-        lv_label_set_text(percent_label_, buf);
     }
 
     if (amount_label_) {
@@ -565,20 +581,20 @@ void SavingsScreen::OnCreateGoalClicked(lv_event_t* e) {
     self->ShowGoalSelectionView();
 }
 
-void SavingsScreen::OnFeedPiggyClicked(lv_event_t* e) {
-    auto* self = static_cast<SavingsScreen*>(lv_event_get_user_data(e));
-    if (!self) return;
-
-    ESP_LOGI(TAG, "Feed piggy +50,000 clicked!");
-    self->AddSavings(50000);
-}
-
 void SavingsScreen::OnChangeGoalClicked(lv_event_t* e) {
     auto* self = static_cast<SavingsScreen*>(lv_event_get_user_data(e));
     if (!self) return;
 
     ESP_LOGI(TAG, "Change goal clicked -> opening goal selector");
     self->ShowGoalSelectionView();
+}
+
+void SavingsScreen::OnEditPriceClicked(lv_event_t* e) {
+    auto* self = static_cast<SavingsScreen*>(lv_event_get_user_data(e));
+    if (!self) return;
+
+    ESP_LOGI(TAG, "Edit price clicked -> opening keypad for current goal");
+    self->ShowPriceInputView(self->current_goal_type_);
 }
 
 void SavingsScreen::OnBackToPreviousClicked(lv_event_t* e) {
@@ -598,9 +614,25 @@ void SavingsScreen::OnGoalSelected(lv_event_t* e) {
 
     lv_obj_t* card = (lv_obj_t*)lv_event_get_target(e);
     GoalType selected_type = (GoalType)(uintptr_t)lv_obj_get_user_data(card);
+    const auto* def = self->FindGoalDef(selected_type);
+    if (!def) return;
 
-    ESP_LOGI(TAG, "Goal type selected: %d -> opening price keypad", (int)selected_type);
-    self->ShowPriceInputView(selected_type);
+    if (self->IsGoalConfigured(selected_type)) {
+        // Cờ = 1: Đã setup tiền trước đó -> Kích hoạt ngay với số tiền đã lưu, không cần nhập lại!
+        self->has_active_goal_ = true;
+        self->current_goal_type_ = def->type;
+        self->current_goal_name_ = def->name;
+        self->target_amount_ = self->GetSavedGoalPrice(selected_type);
+        if (self->target_amount_ <= 0) self->target_amount_ = 2000000;
+        self->SaveToNVS();
+        ESP_LOGI(TAG, "Goal %s already configured (flag=1, target=%ld d) -> activating directly",
+                 def->name.c_str(), (long)self->target_amount_);
+        self->ShowActiveGoalView();
+    } else {
+        // Cờ = 0: Chưa từng setup tiền -> Mở bàn phím để nhập số tiền lần đầu
+        ESP_LOGI(TAG, "Goal %s not configured yet (flag=0) -> opening price keypad", def->name.c_str());
+        self->ShowPriceInputView(selected_type);
+    }
 }
 
 void SavingsScreen::OnKeypadDigitClicked(lv_event_t* e) {
@@ -663,19 +695,21 @@ void SavingsScreen::OnConfirmPriceClicked(lv_event_t* e) {
             price = std::stoll(self->input_buffer_);
         }
     } catch (...) {
-        price = 1000000;
+        price = 2000000;
     }
-    if (price <= 0) price = 1000000;
+    if (price <= 0) price = 2000000;
 
     const auto* def = self->FindGoalDef(self->pending_goal_type_);
     if (def) {
+        self->SetSavedGoalPrice(self->pending_goal_type_, (int32_t)price);
+        self->SetGoalConfigured(self->pending_goal_type_, true); // Đánh cờ -> 1 (đã setup tiền)
         self->has_active_goal_ = true;
         self->current_goal_type_ = def->type;
         self->current_goal_name_ = def->name;
         self->target_amount_ = (int32_t)price;
-        self->current_amount_ = 0;
-        ESP_LOGI(TAG, "Goal created: %s, target: %ld d", self->current_goal_name_.c_str(), (long)price);
+        ESP_LOGI(TAG, "Goal confirmed & flag marked: %s, target: %ld d", self->current_goal_name_.c_str(), (long)price);
         self->SaveToNVS();
         self->ShowActiveGoalView();
+        BuddySyncService::GetInstance().NotifyGoalChanged(static_cast<int>(def->type), def->name, (int32_t)price);
     }
 }

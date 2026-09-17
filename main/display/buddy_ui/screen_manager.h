@@ -55,9 +55,16 @@ private:
     FamilyMomentScreen family_screen_;
     SettingsScreen settings_screen_;
 
+    lv_obj_t* top_pull_zone_ = nullptr;
+    lv_point_t touch_start_point_ = {0, 0};
+    bool touch_tracking_ = false;
+
     void CreatePageIndicators(lv_obj_t* parent);
     void UpdateIndicators(int active_index);
     static void TileviewScrollCb(lv_event_t* e);
+    static void TopPullZoneCb(lv_event_t* e);
+    static void ScreenTouchCb(lv_event_t* e);
+    static void GlobalGestureCb(lv_event_t* e);
 };
 
 #endif // BUDDY_SCREEN_MANAGER_H

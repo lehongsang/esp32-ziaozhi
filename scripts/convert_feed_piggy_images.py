@@ -1,22 +1,23 @@
 import os
 from PIL import Image
 
-def convert_to_rgb565_c_array(src_path, var_name, out_c_path, size=(160, 160)):
+def convert_to_rgb565_c_array(src_path, var_name, out_c_path, size=(110, 110), crop_ratio=0.85):
     print(f"Converting {src_path} -> {out_c_path} ({size[0]}x{size[1]})...")
     im = Image.open(src_path).convert("RGB")
     w_src, h_src = im.size
     
-    # Zoom tightly into the subject (center crop 78%) so the character is huge and fills the frame
-    crop_w = int(w_src * 0.78)
-    crop_h = int(h_src * 0.78)
-    left = (w_src - crop_w) // 2
-    top = (h_src - crop_h) // 2
-    cropped = im.crop((left, top, left + crop_w, top + crop_h))
-    img = cropped.resize(size, Image.Resampling.LANCZOS)
+    if crop_ratio < 1.0:
+        crop_w = int(w_src * crop_ratio)
+        crop_h = int(h_src * crop_ratio)
+        left = (w_src - crop_w) // 2
+        top = (h_src - crop_h) // 2
+        im = im.crop((left, top, left + crop_w, top + crop_h))
+        
+    img = im.resize(size, Image.Resampling.LANCZOS)
     
     w, h = img.size
     pixels = img.load()
- 
+    
     data = bytearray()
     for y in range(h):
         for x in range(w):
@@ -59,15 +60,21 @@ def convert_to_rgb565_c_array(src_path, var_name, out_c_path, size=(160, 160)):
     print(f"Done {out_c_path}, size: {os.path.getsize(out_c_path)} bytes")
 
 if __name__ == "__main__":
-    base_dir = r"C:\Users\Admin\.gemini\antigravity-ide\brain\f5c6a1da-39eb-44ff-b89b-3091cff43511"
+    base_dir = r"C:\Users\Admin\.gemini\antigravity-ide\brain\0004555b-5589-4cff-96e7-e3a42271f588"
     out_dir = r"main\display\buddy_ui\assets"
+    os.makedirs(out_dir, exist_ok=True)
     
-    piggy_src = os.path.join(base_dir, "goal_dream_piggy_art_1789096312151.jpg")
-    bike_src = os.path.join(base_dir, "goal_bike_art_1789094795722.jpg")
-    robot_src = os.path.join(base_dir, "goal_robot_art_1789094813720.jpg")
-    lego_src = os.path.join(base_dir, "goal_lego_art_1789094893591.jpg")
+    hungry_piggy_src = os.path.join(base_dir, "piggy_hungry_wait_1789615289775.jpg")
+    happy_piggy_src = os.path.join(base_dir, "piggy_happy_fed_1789615471899.jpg")
+    corn_src = os.path.join(base_dir, "food_corn_3d_1789615304701.jpg")
+    potato_src = os.path.join(base_dir, "food_potato_3d_1789615322986.jpg")
+    carrot_src = os.path.join(base_dir, "food_carrot_3d_1789615447988.jpg")
     
-    convert_to_rgb565_c_array(piggy_src, "goal_art_piggy", os.path.join(out_dir, "goal_art_piggy.c"), (160, 160))
-    convert_to_rgb565_c_array(bike_src, "goal_art_bike", os.path.join(out_dir, "goal_art_bike.c"), (160, 160))
-    convert_to_rgb565_c_array(robot_src, "goal_art_robot", os.path.join(out_dir, "goal_art_robot.c"), (160, 160))
-    convert_to_rgb565_c_array(lego_src, "goal_art_lego", os.path.join(out_dir, "goal_art_lego.c"), (160, 160))
+    # Piggy full/medium avatars enlarged to 130x130 for prominent central character display
+    convert_to_rgb565_c_array(hungry_piggy_src, "buddy_piggy_hungry", os.path.join(out_dir, "buddy_piggy_hungry.c"), (130, 130), 0.88)
+    convert_to_rgb565_c_array(happy_piggy_src, "buddy_piggy_happy", os.path.join(out_dir, "buddy_piggy_happy.c"), (130, 130), 0.88)
+    
+    # Food item icons (44x44)
+    convert_to_rgb565_c_array(corn_src, "buddy_food_corn", os.path.join(out_dir, "buddy_food_corn.c"), (44, 44), 0.95)
+    convert_to_rgb565_c_array(potato_src, "buddy_food_potato", os.path.join(out_dir, "buddy_food_potato.c"), (44, 44), 0.95)
+    convert_to_rgb565_c_array(carrot_src, "buddy_food_carrot", os.path.join(out_dir, "buddy_food_carrot.c"), (44, 44), 0.95)

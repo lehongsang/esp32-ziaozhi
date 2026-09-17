@@ -1,4 +1,5 @@
 #include "screen_manager.h"
+#include "buddy_sync_service.h"
 #include <esp_log.h>
 
 #define TAG "BuddyScreenManager"
@@ -29,39 +30,71 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     lv_obj_set_size(tileview_, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_opa(tileview_, LV_OPA_TRANSP, 0);
 
-    // 3. Add 6 Tiles (Horizontal row orientation: col = i, row = 0)
+    // 3. Add 5 Main Screens
     // Screen 0: Home
-    tiles_[0] = lv_tileview_add_tile(tileview_, 0, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
+    tiles_[0] = lv_tileview_add_tile(tileview_, 0, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
     home_screen_.Create(tiles_[0]);
 
     // Screen 1: Today's Quest
-    tiles_[1] = lv_tileview_add_tile(tileview_, 1, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
+    tiles_[1] = lv_tileview_add_tile(tileview_, 1, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
     quest_screen_.Create(tiles_[1]);
 
     // Screen 2: AI Tutor
-    tiles_[2] = lv_tileview_add_tile(tileview_, 2, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
+    tiles_[2] = lv_tileview_add_tile(tileview_, 2, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
     tutor_screen_.Create(tiles_[2]);
 
     // Screen 3: Savings Dream Goal
-    tiles_[3] = lv_tileview_add_tile(tileview_, 3, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
+    tiles_[3] = lv_tileview_add_tile(tileview_, 3, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
     savings_screen_.Create(tiles_[3]);
 
     // Screen 4: Family Moment
-    tiles_[4] = lv_tileview_add_tile(tileview_, 4, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
+    tiles_[4] = lv_tileview_add_tile(tileview_, 4, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
     family_screen_.Create(tiles_[4]);
-
-    // Screen 5: Settings
-    tiles_[5] = lv_tileview_add_tile(tileview_, 5, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT | LV_DIR_TOP | LV_DIR_BOTTOM));
-    settings_screen_.Create(tiles_[5]);
 
     // 4. Create Page Indicator Dots at Bottom
     CreatePageIndicators(bg);
 
-    // 5. Register Scroll Event Callback to Update Indicators
+    // 5. Invisible Top Pull-Down Touch Zone (Full Width 320x28px, Clean & Unobtrusive)
+    top_pull_zone_ = lv_obj_create(bg);
+    lv_obj_remove_style_all(top_pull_zone_);
+    lv_obj_set_size(top_pull_zone_, 320, 28);
+    lv_obj_align(top_pull_zone_, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_bg_opa(top_pull_zone_, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(top_pull_zone_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(top_pull_zone_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(top_pull_zone_, TopPullZoneCb, LV_EVENT_ALL, this);
+
+    // 6. Create Settings Control Center Overlay (Sits on top layer)
+    settings_screen_.Create(bg);
+
+    // 7. Register Scroll, Gesture and Touch Tracking Events on Tileview and Tiles
     lv_obj_add_event_cb(tileview_, TileviewScrollCb, LV_EVENT_VALUE_CHANGED, this);
+    lv_obj_add_event_cb(tileview_, GlobalGestureCb, LV_EVENT_GESTURE, this);
+    lv_obj_add_event_cb(tileview_, ScreenTouchCb, LV_EVENT_PRESSED, this);
+    lv_obj_add_event_cb(tileview_, ScreenTouchCb, LV_EVENT_PRESSING, this);
+    lv_obj_add_event_cb(tileview_, ScreenTouchCb, LV_EVENT_RELEASED, this);
+
+    for (int i = 0; i < static_cast<int>(BuddyScreenId::kScreenCount); ++i) {
+        if (tiles_[i]) {
+            lv_obj_add_flag(tiles_[i], LV_OBJ_FLAG_GESTURE_BUBBLE);
+            lv_obj_add_event_cb(tiles_[i], GlobalGestureCb, LV_EVENT_GESTURE, this);
+            lv_obj_add_event_cb(tiles_[i], ScreenTouchCb, LV_EVENT_PRESSED, this);
+            lv_obj_add_event_cb(tiles_[i], ScreenTouchCb, LV_EVENT_PRESSING, this);
+            lv_obj_add_event_cb(tiles_[i], ScreenTouchCb, LV_EVENT_RELEASED, this);
+        }
+    }
 
     UpdateIndicators(0);
-    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 6 screens");
+
+    // 8. Initialize Backend Sync Service & Hooks
+    BuddySyncService::GetInstance().Initialize(&quest_screen_, &savings_screen_, &family_screen_);
+    family_screen_.OnLikeClicked([](bool liked) {
+        if (liked) {
+            BuddySyncService::GetInstance().NotifyFamilyLove();
+        }
+    });
+
+    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 5 screens + Control Center Dropdown");
 }
 
 void BuddyScreenManager::CreatePageIndicators(lv_obj_t* parent) {
@@ -150,5 +183,81 @@ void BuddyScreenManager::SetTileviewScrollable(bool scrollable) {
         lv_obj_add_flag(tileview_, LV_OBJ_FLAG_SCROLLABLE);
     } else {
         lv_obj_remove_flag(tileview_, LV_OBJ_FLAG_SCROLLABLE);
+    }
+}
+
+void BuddyScreenManager::TopPullZoneCb(lv_event_t* e) {
+    auto* self = static_cast<BuddyScreenManager*>(lv_event_get_user_data(e));
+    if (!self || self->settings_screen_.IsOpen()) return;
+
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t* indev = lv_indev_active();
+
+    if (code == LV_EVENT_CLICKED) {
+        ESP_LOGI(TAG, "Top pull zone clicked -> Open Control Center");
+        self->settings_screen_.Open();
+    } else if (code == LV_EVENT_PRESSED) {
+        if (indev) {
+            lv_indev_get_point(indev, &self->touch_start_point_);
+            self->touch_tracking_ = true;
+        }
+    } else if (code == LV_EVENT_PRESSING || code == LV_EVENT_RELEASED) {
+        if (self->touch_tracking_ && indev) {
+            lv_point_t curr;
+            lv_indev_get_point(indev, &curr);
+            int32_t dy = curr.y - self->touch_start_point_.y;
+            int32_t dx = abs(curr.x - self->touch_start_point_.x);
+            if (dy >= 18 && dy > dx) {
+                ESP_LOGI(TAG, "Swipe down on Top Zone detected (dy=%ld) -> Opening Control Center", (long)dy);
+                self->touch_tracking_ = false;
+                self->settings_screen_.Open();
+            }
+        }
+        if (code == LV_EVENT_RELEASED) {
+            self->touch_tracking_ = false;
+        }
+    }
+}
+
+void BuddyScreenManager::ScreenTouchCb(lv_event_t* e) {
+    auto* self = static_cast<BuddyScreenManager*>(lv_event_get_user_data(e));
+    if (!self || self->settings_screen_.IsOpen()) return;
+
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t* indev = lv_indev_active();
+    if (!indev) return;
+
+    if (code == LV_EVENT_PRESSED) {
+        lv_indev_get_point(indev, &self->touch_start_point_);
+        // If touch starts within top 60px of display, enable swipe-down tracking
+        if (self->touch_start_point_.y <= 60) {
+            self->touch_tracking_ = true;
+        }
+    } else if (code == LV_EVENT_PRESSING || code == LV_EVENT_RELEASED) {
+        if (self->touch_tracking_) {
+            lv_point_t curr;
+            lv_indev_get_point(indev, &curr);
+            int32_t dy = curr.y - self->touch_start_point_.y;
+            int32_t dx = abs(curr.x - self->touch_start_point_.x);
+            if (dy >= 22 && dy > (dx * 3 / 4)) {
+                ESP_LOGI(TAG, "Screen swipe down detected from y=%ld (dy=%ld) -> Opening Control Center", (long)self->touch_start_point_.y, (long)dy);
+                self->touch_tracking_ = false;
+                self->settings_screen_.Open();
+            }
+        }
+        if (code == LV_EVENT_RELEASED) {
+            self->touch_tracking_ = false;
+        }
+    }
+}
+
+void BuddyScreenManager::GlobalGestureCb(lv_event_t* e) {
+    auto* self = static_cast<BuddyScreenManager*>(lv_event_get_user_data(e));
+    if (!self || self->settings_screen_.IsOpen()) return;
+
+    lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
+    if (dir == LV_DIR_BOTTOM) {
+        ESP_LOGI(TAG, "Swipe down gesture detected -> Opening Control Center");
+        self->settings_screen_.Open();
     }
 }

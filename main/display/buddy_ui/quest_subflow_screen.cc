@@ -41,8 +41,12 @@ void QuestSubflowScreen::StartQuest(const std::string& quest_id, const std::stri
     session_questions_.clear();
     current_q_idx_ = 0;
     is_answering_locked_ = false;
+    feed_count_ = 0;
+    last_fed_food_name_ = "";
 
-    if (IsReadingQuest()) {
+    if (IsFeedQuest()) {
+        // Feed Piggy Quest: Interactive feeding with 3 AI-generated treats
+    } else if (IsReadingQuest()) {
         // English Reading Quest: Sample 1st story & its comprehension questions
         current_reading_story_idx_ = 1;
         total_reading_stories_ = 2;
@@ -122,6 +126,14 @@ void QuestSubflowScreen::SwitchState(QuestSubflowState state) {
             lv_obj_set_flex_align(root_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
             RenderMovementTimer();
             break;
+        case QuestSubflowState::kFeedPiggyWaiting:
+            lv_obj_set_flex_align(root_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+            RenderFeedPiggyWaiting();
+            break;
+        case QuestSubflowState::kFeedPiggyFed:
+            lv_obj_set_flex_align(root_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+            RenderFeedPiggyFed(last_fed_food_name_);
+            break;
         case QuestSubflowState::kCompleted:
             lv_obj_set_flex_align(root_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
             RenderCompleted();
@@ -181,7 +193,10 @@ void QuestSubflowScreen::RenderViewDetails() {
     lv_color_t badge_color = lv_color_hex(0x22C55E); // Green default
     const char* badge_icon_str = MATERIAL_SYMBOLS_EDIT_SQUARE;
 
-    if (IsReadingQuest()) {
+    if (IsFeedQuest()) {
+        badge_color = lv_color_hex(0xEC4899); // Rose Pink
+        badge_icon_str = MATERIAL_SYMBOLS_FAVORITE;
+    } else if (IsReadingQuest()) {
         badge_color = lv_color_hex(0x06D6A0);
         badge_icon_str = MATERIAL_SYMBOLS_SCHEDULE;
     } else if (current_quest_id_.find("move") != std::string::npos) {
@@ -208,7 +223,9 @@ void QuestSubflowScreen::RenderViewDetails() {
     lv_obj_set_style_margin_top(name_lbl, 2, 0);
 
     lv_obj_t* desc_lbl = lv_label_create(root_);
-    if (IsReadingQuest()) {
+    if (IsFeedQuest()) {
+        lv_label_set_text(desc_lbl, "Feed treats to your cute piggy");
+    } else if (IsReadingQuest()) {
         std::string story_desc = "Story: " + current_story_.title;
         lv_label_set_text(desc_lbl, story_desc.c_str());
     } else if (current_quest_id_.find("math") != std::string::npos || current_quest_id_ == "q1") {
@@ -224,7 +241,9 @@ void QuestSubflowScreen::RenderViewDetails() {
 
     // 4. Progress Text
     lv_obj_t* prog_lbl = lv_label_create(root_);
-    if (IsReadingQuest()) {
+    if (IsFeedQuest()) {
+        lv_label_set_text(prog_lbl, "Goal: Feed 3 treats (Corn, Potato, Carrot)");
+    } else if (IsReadingQuest()) {
         lv_label_set_text(prog_lbl, "Goal: 2 Stories + Comprehension Quizzes");
     } else if (current_quest_id_.find("math") != std::string::npos || current_quest_id_ == "q1") {
         lv_label_set_text(prog_lbl, "Progress: 0 / 10");
@@ -246,7 +265,7 @@ void QuestSubflowScreen::RenderViewDetails() {
     lv_obj_add_event_cb(btn_start, OnStartBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* btn_txt = lv_label_create(btn_start);
-    lv_label_set_text(btn_txt, IsReadingQuest() ? "Read story  ▶" : (IsMovementQuest() ? "Start Exercise  ▶" : "Start now  ▶"));
+    lv_label_set_text(btn_txt, IsFeedQuest() ? "Feed Piggy  ▶" : (IsReadingQuest() ? "Read story  ▶" : (IsMovementQuest() ? "Start Exercise  ▶" : "Start now  ▶")));
     lv_obj_set_style_text_font(btn_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(btn_txt);
@@ -809,6 +828,247 @@ void QuestSubflowScreen::OnMovementFinishBtnCb(lv_event_t* e) {
     self->SwitchState(QuestSubflowState::kCompleted);
 }
 
+void QuestSubflowScreen::RenderFeedPiggyWaiting() {
+    // 1. Top Bar with Back Button, Title, and Love progress
+    lv_obj_t* top_bar = lv_obj_create(root_);
+    lv_obj_remove_style_all(top_bar);
+    lv_obj_set_size(top_bar, lv_pct(96), 24);
+    lv_obj_set_flex_flow(top_bar, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top_bar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* btn_back = lv_btn_create(top_bar);
+    lv_obj_remove_style_all(btn_back);
+    lv_obj_set_size(btn_back, 42, 24);
+    lv_obj_set_style_radius(btn_back, 8, 0);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x1E2738), 0);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x3B82F6), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn_back, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(btn_back, 0, 0);
+    lv_obj_add_event_cb(btn_back, OnBackBtnCb, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* back_icon = lv_label_create(btn_back);
+    lv_label_set_text(back_icon, MATERIAL_SYMBOLS_ARROW_BACK);
+    lv_obj_set_style_text_font(back_icon, &font_material_symbols_20_4, 0);
+    lv_obj_set_style_text_color(back_icon, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(back_icon);
+
+    lv_obj_t* title_lbl = lv_label_create(top_bar);
+    lv_label_set_text(title_lbl, "Feed Piggy 🐷");
+    lv_obj_set_style_text_font(title_lbl, &font_noto_sans_basic_16_4, 0);
+    lv_obj_set_style_text_color(title_lbl, lv_color_hex(0xFFFFFF), 0);
+
+    lv_obj_t* love_badge = lv_obj_create(top_bar);
+    lv_obj_remove_style_all(love_badge);
+    lv_obj_set_size(love_badge, 60, 20);
+    lv_obj_set_style_bg_color(love_badge, lv_color_hex(0x3B1D2A), 0);
+    lv_obj_set_style_bg_opa(love_badge, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(love_badge, 10, 0);
+    lv_obj_set_style_border_width(love_badge, 1, 0);
+    lv_obj_set_style_border_color(love_badge, lv_color_hex(0xEC4899), 0);
+
+    lv_obj_t* love_txt = lv_label_create(love_badge);
+    char lbuf[16];
+    snprintf(lbuf, sizeof(lbuf), "❤️ %u/3", (unsigned int)feed_count_);
+    lv_label_set_text(love_txt, lbuf);
+    lv_obj_set_style_text_font(love_txt, &font_noto_sans_basic_16_4, 0);
+    lv_obj_set_style_text_color(love_txt, lv_color_hex(0xF472B6), 0);
+    lv_obj_center(love_txt);
+
+    // 2. Central Big Hungry Piggy Image (134x134)
+    lv_obj_t* img_card = lv_obj_create(root_);
+    lv_obj_remove_style_all(img_card);
+    lv_obj_set_size(img_card, 134, 134);
+    lv_obj_set_style_bg_color(img_card, lv_color_hex(0x161C28), 0);
+    lv_obj_set_style_bg_opa(img_card, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(img_card, 16, 0);
+    lv_obj_set_style_border_width(img_card, 2, 0);
+    lv_obj_set_style_border_color(img_card, lv_color_hex(0xEC4899), 0);
+    lv_obj_set_style_margin_top(img_card, 2, 0);
+    lv_obj_clear_flag(img_card, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* piggy_img = lv_image_create(img_card);
+    lv_image_set_src(piggy_img, &buddy_piggy_hungry);
+    lv_obj_set_size(piggy_img, 130, 130);
+    lv_obj_set_style_radius(piggy_img, 14, 0);
+    lv_obj_set_style_clip_corner(piggy_img, true, 0);
+    lv_obj_center(piggy_img);
+
+    // 3. Bottom Food Selection Row (3 Food Icons without text)
+    lv_obj_t* food_row = lv_obj_create(root_);
+    lv_obj_remove_style_all(food_row);
+    lv_obj_set_size(food_row, lv_pct(96), 46);
+    lv_obj_set_flex_flow(food_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(food_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(food_row, 18, 0);
+    lv_obj_set_style_margin_top(food_row, 4, 0);
+    lv_obj_clear_flag(food_row, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Icon 1: Corn
+    lv_obj_t* btn_corn = lv_btn_create(food_row);
+    lv_obj_remove_style_all(btn_corn);
+    lv_obj_set_size(btn_corn, 54, 42);
+    lv_obj_set_style_bg_color(btn_corn, lv_color_hex(0x161C28), 0);
+    lv_obj_set_style_bg_color(btn_corn, lv_color_hex(0x2D2410), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn_corn, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(btn_corn, 12, 0);
+    lv_obj_set_style_border_width(btn_corn, 2, 0);
+    lv_obj_set_style_border_color(btn_corn, lv_color_hex(0xFBBF24), 0);
+    lv_obj_set_user_data(btn_corn, (void*)1);
+    lv_obj_add_event_cb(btn_corn, OnFeedFoodBtnCb, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* corn_icon = lv_image_create(btn_corn);
+    lv_image_set_src(corn_icon, &buddy_food_corn);
+    lv_obj_set_size(corn_icon, 36, 36);
+    lv_obj_set_style_radius(corn_icon, 8, 0);
+    lv_obj_center(corn_icon);
+
+    // Icon 2: Potato
+    lv_obj_t* btn_potato = lv_btn_create(food_row);
+    lv_obj_remove_style_all(btn_potato);
+    lv_obj_set_size(btn_potato, 54, 42);
+    lv_obj_set_style_bg_color(btn_potato, lv_color_hex(0x161C28), 0);
+    lv_obj_set_style_bg_color(btn_potato, lv_color_hex(0x2E1D10), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn_potato, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(btn_potato, 12, 0);
+    lv_obj_set_style_border_width(btn_potato, 2, 0);
+    lv_obj_set_style_border_color(btn_potato, lv_color_hex(0xFB923C), 0);
+    lv_obj_set_user_data(btn_potato, (void*)2);
+    lv_obj_add_event_cb(btn_potato, OnFeedFoodBtnCb, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* potato_icon = lv_image_create(btn_potato);
+    lv_image_set_src(potato_icon, &buddy_food_potato);
+    lv_obj_set_size(potato_icon, 36, 36);
+    lv_obj_set_style_radius(potato_icon, 8, 0);
+    lv_obj_center(potato_icon);
+
+    // Icon 3: Carrot
+    lv_obj_t* btn_carrot = lv_btn_create(food_row);
+    lv_obj_remove_style_all(btn_carrot);
+    lv_obj_set_size(btn_carrot, 54, 42);
+    lv_obj_set_style_bg_color(btn_carrot, lv_color_hex(0x161C28), 0);
+    lv_obj_set_style_bg_color(btn_carrot, lv_color_hex(0x102E1E), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn_carrot, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(btn_carrot, 12, 0);
+    lv_obj_set_style_border_width(btn_carrot, 2, 0);
+    lv_obj_set_style_border_color(btn_carrot, lv_color_hex(0x34D399), 0);
+    lv_obj_set_user_data(btn_carrot, (void*)3);
+    lv_obj_add_event_cb(btn_carrot, OnFeedFoodBtnCb, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* carrot_icon = lv_image_create(btn_carrot);
+    lv_image_set_src(carrot_icon, &buddy_food_carrot);
+    lv_obj_set_size(carrot_icon, 36, 36);
+    lv_obj_set_style_radius(carrot_icon, 8, 0);
+    lv_obj_center(carrot_icon);
+}
+
+void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
+    // 1. Top Bar with Back Button, Title, and Love progress
+    lv_obj_t* top_bar = lv_obj_create(root_);
+    lv_obj_remove_style_all(top_bar);
+    lv_obj_set_size(top_bar, lv_pct(96), 24);
+    lv_obj_set_flex_flow(top_bar, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top_bar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* btn_back = lv_btn_create(top_bar);
+    lv_obj_remove_style_all(btn_back);
+    lv_obj_set_size(btn_back, 42, 24);
+    lv_obj_set_style_radius(btn_back, 8, 0);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x1E2738), 0);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x3B82F6), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(btn_back, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(btn_back, 0, 0);
+    lv_obj_add_event_cb(btn_back, OnBackBtnCb, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* back_icon = lv_label_create(btn_back);
+    lv_label_set_text(back_icon, MATERIAL_SYMBOLS_ARROW_BACK);
+    lv_obj_set_style_text_font(back_icon, &font_material_symbols_20_4, 0);
+    lv_obj_set_style_text_color(back_icon, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(back_icon);
+
+    lv_obj_t* title_lbl = lv_label_create(top_bar);
+    lv_label_set_text(title_lbl, "Happy Piggy! ✨");
+    lv_obj_set_style_text_font(title_lbl, &font_noto_sans_basic_16_4, 0);
+    lv_obj_set_style_text_color(title_lbl, lv_color_hex(0x4ADE80), 0);
+
+    lv_obj_t* love_badge = lv_obj_create(top_bar);
+    lv_obj_remove_style_all(love_badge);
+    lv_obj_set_size(love_badge, 60, 20);
+    lv_obj_set_style_bg_color(love_badge, lv_color_hex(0x163820), 0);
+    lv_obj_set_style_bg_opa(love_badge, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(love_badge, 10, 0);
+    lv_obj_set_style_border_width(love_badge, 1, 0);
+    lv_obj_set_style_border_color(love_badge, lv_color_hex(0x22C55E), 0);
+
+    lv_obj_t* love_txt = lv_label_create(love_badge);
+    char lbuf[16];
+    snprintf(lbuf, sizeof(lbuf), "❤️ %u/3", (unsigned int)feed_count_);
+    lv_label_set_text(love_txt, lbuf);
+    lv_obj_set_style_text_font(love_txt, &font_noto_sans_basic_16_4, 0);
+    lv_obj_set_style_text_color(love_txt, lv_color_hex(0x4ADE80), 0);
+    lv_obj_center(love_txt);
+
+    // 2. Central Big Happy Piggy Image (134x134)
+    lv_obj_t* img_card = lv_obj_create(root_);
+    lv_obj_remove_style_all(img_card);
+    lv_obj_set_size(img_card, 134, 134);
+    lv_obj_set_style_bg_color(img_card, lv_color_hex(0x161C28), 0);
+    lv_obj_set_style_bg_opa(img_card, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(img_card, 16, 0);
+    lv_obj_set_style_border_width(img_card, 2, 0);
+    lv_obj_set_style_border_color(img_card, lv_color_hex(0x22C55E), 0);
+    lv_obj_set_style_margin_top(img_card, 2, 0);
+    lv_obj_clear_flag(img_card, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* piggy_img = lv_image_create(img_card);
+    lv_image_set_src(piggy_img, &buddy_piggy_happy);
+    lv_obj_set_size(piggy_img, 130, 130);
+    lv_obj_set_style_radius(piggy_img, 14, 0);
+    lv_obj_set_style_clip_corner(piggy_img, true, 0);
+    lv_obj_center(piggy_img);
+
+    // 3. Bottom Action Row
+    lv_obj_t* action_row = lv_obj_create(root_);
+    lv_obj_remove_style_all(action_row);
+    lv_obj_set_size(action_row, lv_pct(96), 46);
+    lv_obj_set_flex_flow(action_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(action_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(action_row, 12, 0);
+    lv_obj_set_style_margin_top(action_row, 4, 0);
+    lv_obj_clear_flag(action_row, LV_OBJ_FLAG_SCROLLABLE);
+
+    if (feed_count_ < 3) {
+        lv_obj_t* btn_again = lv_btn_create(action_row);
+        lv_obj_set_size(btn_again, 120, 34);
+        lv_obj_set_style_radius(btn_again, 17, 0);
+        lv_obj_set_style_bg_color(btn_again, lv_color_hex(0xEC4899), 0);
+        lv_obj_add_event_cb(btn_again, [](lv_event_t* e) {
+            auto* self = static_cast<QuestSubflowScreen*>(lv_event_get_user_data(e));
+            if (self) self->SwitchState(QuestSubflowState::kFeedPiggyWaiting);
+        }, LV_EVENT_CLICKED, this);
+
+        lv_obj_t* again_txt = lv_label_create(btn_again);
+        lv_label_set_text(again_txt, "Feed more 🍽️");
+        lv_obj_set_style_text_font(again_txt, &font_noto_sans_basic_16_4, 0);
+        lv_obj_set_style_text_color(again_txt, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_center(again_txt);
+    }
+
+    lv_obj_t* btn_finish = lv_btn_create(action_row);
+    lv_obj_set_size(btn_finish, (feed_count_ >= 3) ? 170 : 120, 34);
+    lv_obj_set_style_radius(btn_finish, 17, 0);
+    lv_obj_set_style_bg_color(btn_finish, lv_color_hex(0x22C55E), 0);
+    lv_obj_add_event_cb(btn_finish, [](lv_event_t* e) {
+        auto* self = static_cast<QuestSubflowScreen*>(lv_event_get_user_data(e));
+        if (self) self->SwitchState(QuestSubflowState::kReward);
+    }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* finish_txt = lv_label_create(btn_finish);
+    lv_label_set_text(finish_txt, (feed_count_ >= 3) ? "Claim Reward ✨" : "Claim ✨");
+    lv_obj_set_style_text_font(finish_txt, &font_noto_sans_basic_16_4, 0);
+    lv_obj_set_style_text_color(finish_txt, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(finish_txt);
+}
+
 void QuestSubflowScreen::RenderReward() {
     // 1. Title
     lv_obj_t* reward_lbl = lv_label_create(root_);
@@ -849,7 +1109,9 @@ void QuestSubflowScreen::RenderReward() {
 void QuestSubflowScreen::OnStartBtnCb(lv_event_t* e) {
     auto* self = static_cast<QuestSubflowScreen*>(lv_event_get_user_data(e));
     if (self) {
-        if (self->IsReadingQuest()) {
+        if (self->IsFeedQuest()) {
+            self->SwitchState(QuestSubflowState::kFeedPiggyWaiting);
+        } else if (self->IsReadingQuest()) {
             self->SwitchState(QuestSubflowState::kReadStory);
         } else if (self->IsMovementQuest()) {
             self->SwitchState(QuestSubflowState::kMovementTimer);
@@ -907,8 +1169,10 @@ void QuestSubflowScreen::OnBackBtnCb(lv_event_t* e) {
     if (self) {
         ESP_LOGI(TAG, "Back button pressed, current state: %d", (int)self->current_state_);
         self->CleanupMovementTimer();
-        if (self->current_state_ == QuestSubflowState::kReadStory || self->current_state_ == QuestSubflowState::kMovementTimer) {
+        if (self->current_state_ == QuestSubflowState::kReadStory || self->current_state_ == QuestSubflowState::kMovementTimer || self->current_state_ == QuestSubflowState::kFeedPiggyWaiting) {
             self->SwitchState(QuestSubflowState::kViewDetails);
+        } else if (self->current_state_ == QuestSubflowState::kFeedPiggyFed) {
+            self->SwitchState(QuestSubflowState::kFeedPiggyWaiting);
         } else if (self->current_state_ == QuestSubflowState::kDoQuiz) {
             if (self->IsReadingQuest()) {
                 self->SwitchState(QuestSubflowState::kReadStory);
@@ -927,5 +1191,21 @@ void QuestSubflowScreen::OnNextQuestionTimerCb(lv_timer_t* timer) {
     if (self) {
         self->AdvanceNextQuestion();
     }
+}
+
+void QuestSubflowScreen::OnFeedFoodBtnCb(lv_event_t* e) {
+    auto* self = static_cast<QuestSubflowScreen*>(lv_event_get_user_data(e));
+    lv_obj_t* target = (lv_obj_t*)lv_event_get_current_target(e);
+    if (!self || !target) return;
+
+    int food_id = (int)(uintptr_t)lv_obj_get_user_data(target);
+    std::string food_name = "treat";
+    if (food_id == 1) food_name = "Sweet Corn";
+    else if (food_id == 2) food_name = "Baked Potato";
+    else if (food_id == 3) food_name = "Fresh Carrot";
+
+    self->feed_count_++;
+    self->last_fed_food_name_ = food_name;
+    self->SwitchState(QuestSubflowState::kFeedPiggyFed);
 }
 
