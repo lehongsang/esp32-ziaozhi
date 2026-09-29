@@ -80,6 +80,9 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 void BuddyToastOverlay::Show(const std::string& title, const std::string& body, ToastType type, uint32_t duration_ms) {
     if (!container_) return;
 
+    lv_obj_move_foreground(container_);
+    lv_obj_clear_flag(container_, LV_OBJ_FLAG_HIDDEN);
+
     if (title_label_) lv_label_set_text(title_label_, title.c_str());
     if (body_label_) lv_label_set_text(body_label_, body.c_str());
 
@@ -121,7 +124,10 @@ void BuddyToastOverlay::Show(const std::string& title, const std::string& body, 
     lv_anim_set_path_cb(&a, lv_anim_path_overshoot);
     lv_anim_set_custom_exec_cb(&a, [](lv_anim_t* anim, int32_t val) {
         auto* obj = static_cast<lv_obj_t*>(anim->var);
-        if (obj) lv_obj_set_y(obj, val);
+        if (obj) {
+            lv_obj_set_y(obj, val);
+            lv_obj_invalidate(obj);
+        }
     });
     lv_anim_start(&a);
 
@@ -149,7 +155,10 @@ void BuddyToastOverlay::Hide() {
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in);
     lv_anim_set_custom_exec_cb(&a, [](lv_anim_t* anim, int32_t val) {
         auto* obj = static_cast<lv_obj_t*>(anim->var);
-        if (obj) lv_obj_set_y(obj, val);
+        if (obj) {
+            lv_obj_set_y(obj, val);
+            lv_obj_invalidate(obj);
+        }
     });
     lv_anim_start(&a);
 

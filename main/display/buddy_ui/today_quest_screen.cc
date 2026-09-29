@@ -63,7 +63,9 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_obj_set_flex_align(quest_list_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(quest_list_, 0, 0);
     lv_obj_set_style_pad_gap(quest_list_, 0, 0);
-    lv_obj_set_scrollbar_mode(quest_list_, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(quest_list_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(quest_list_, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(quest_list_, LV_SCROLLBAR_MODE_AUTO);
 
     // 4. Bottom Encouragement Section (Spacious layout, Pos: 14, 186, Size: 292x46)
     footer_card_ = lv_obj_create(container_);
