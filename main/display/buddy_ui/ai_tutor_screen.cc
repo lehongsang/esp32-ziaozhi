@@ -141,8 +141,8 @@ void AiTutorScreen::OnMicBtnCb(lv_event_t* e) {
         return;
     }
 
-    // Play prompt tone & start voice chat
-    Application::GetInstance().PlaySound(Lang::Sounds::OGG_POPUP);
+    // Play offline Vietnamese greeting/prompt voice & start voice chat
+    Application::GetInstance().PlaySound(Lang::Sounds::OGG_WELCOME);
     Application::GetInstance().ToggleChatState();
 
     if (self->on_mic_click_) {
