@@ -49,7 +49,14 @@ void BuddySyncService::Start(const std::string& broker_host, int broker_port) {
 
     xTaskCreate([](void* arg) {
         auto* self = static_cast<BuddySyncService*>(arg);
-        self->ConnectMqtt();
+        // Initial delay to let Wi-Fi stabilize
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        while (true) {
+            if (!self->is_connected_) {
+                self->ConnectMqtt();
+            }
+            vTaskDelay(pdMS_TO_TICKS(10000));
+        }
         vTaskDelete(NULL);
     }, "buddy_sync", 4096 * 2, this, 3, nullptr);
 }
@@ -68,50 +75,52 @@ void BuddySyncService::ConnectMqtt() {
         return;
     }
 
-    mqtt_ = network->CreateMqtt(1);
     if (!mqtt_) {
-        ESP_LOGE(TAG, "Failed to create MQTT client instance");
-        return;
-    }
-
-    mqtt_->SetKeepAlive(60);
-
-    mqtt_->OnConnected([this]() {
-        ESP_LOGI(TAG, "Connected to Buddy Backend MQTT Broker (%s:%d)", broker_host_.c_str(), broker_port_);
-        is_connected_ = true;
-
-        std::string prefix = "buddy/" + device_id_ + "/";
-        mqtt_->Subscribe(prefix + "quests/set", 0);
-        mqtt_->Subscribe(prefix + "savings/set", 0);
-        mqtt_->Subscribe(prefix + "family/message", 0);
-
-        // Also subscribe to wildcard default
-        if (device_id_ != "default") {
-            mqtt_->Subscribe("buddy/default/quests/set", 0);
-            mqtt_->Subscribe("buddy/default/savings/set", 0);
-            mqtt_->Subscribe("buddy/default/family/message", 0);
+        mqtt_ = network->CreateMqtt(1);
+        if (!mqtt_) {
+            ESP_LOGE(TAG, "Failed to create MQTT client instance");
+            return;
         }
 
-        // Send initial online status
-        SendHeartbeat(100, 2, 350);
-    });
+        mqtt_->SetKeepAlive(20);
 
-    mqtt_->OnDisconnected([this]() {
-        ESP_LOGW(TAG, "Disconnected from Buddy Backend MQTT Broker");
-        is_connected_ = false;
-    });
+        mqtt_->OnConnected([this]() {
+            ESP_LOGI(TAG, "Connected to Buddy Backend MQTT Broker (%s:%d)", broker_host_.c_str(), broker_port_);
+            is_connected_ = true;
 
-    mqtt_->OnMessage([this](const std::string& topic, const std::string& payload) {
-        HandleIncomingMqtt(topic, payload);
-    });
+            std::string prefix = "buddy/" + device_id_ + "/";
+            mqtt_->Subscribe(prefix + "quests/set", 0);
+            mqtt_->Subscribe(prefix + "savings/set", 0);
+            mqtt_->Subscribe(prefix + "family/message", 0);
+
+            // Also subscribe to wildcard default
+            if (device_id_ != "default") {
+                mqtt_->Subscribe("buddy/default/quests/set", 0);
+                mqtt_->Subscribe("buddy/default/savings/set", 0);
+                mqtt_->Subscribe("buddy/default/family/message", 0);
+            }
+
+            // Send initial online status
+            SendHeartbeat(100, 2, 350);
+        });
+
+        mqtt_->OnDisconnected([this]() {
+            ESP_LOGW(TAG, "Disconnected from Buddy Backend MQTT Broker");
+            is_connected_ = false;
+        });
+
+        mqtt_->OnMessage([this](const std::string& topic, const std::string& payload) {
+            HandleIncomingMqtt(topic, payload);
+        });
+    }
 
     ESP_LOGI(TAG, "Connecting to MQTT broker at %s:%d (Client ID: buddy_%s)...",
              broker_host_.c_str(), broker_port_, device_id_.c_str());
 
     std::string client_id = "buddy_" + device_id_;
     if (!mqtt_->Connect(broker_host_, broker_port_, client_id, "", "")) {
-        ESP_LOGE(TAG, "Failed to connect to MQTT broker %s:%d, code=%d",
-                 broker_host_.c_str(), broker_port_, mqtt_->GetLastError());
+        ESP_LOGW(TAG, "Failed to connect to MQTT broker %s:%d (will retry in background)",
+                 broker_host_.c_str(), broker_port_);
     }
 }
 
