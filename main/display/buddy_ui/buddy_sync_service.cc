@@ -194,7 +194,9 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
             }
 
             BuddyReminderScheduler::GetInstance().UpdateQuests(quests);
-            BuddyToastOverlay::GetInstance().Show("Đã cập nhật việc", "Hôm nay con có " + std::to_string(total) + " việc cần làm!", ToastType::kNewQuest, 4000);
+            std::string toast_title = "Nhiệm vụ mới! ⭐";
+            std::string toast_body = quests.empty() ? "Đã cập nhật việc hôm nay" : ("Bố mẹ vừa giao: " + quests.back().title);
+            BuddyToastOverlay::GetInstance().Show(toast_title, toast_body, ToastType::kNewQuest, 4500);
         });
     }
 }
@@ -209,10 +211,10 @@ void BuddySyncService::HandleSavingsPayload(cJSON* root) {
     cJSON* currency_item = cJSON_GetObjectItem(root, "currency");
 
     int goal_type_int = (type_item && cJSON_IsNumber(type_item)) ? type_item->valueint : 1;
-    std::string goal_name = (name_item && cJSON_IsString(name_item)) ? name_item->valuestring : "My New Bike";
+    std::string goal_name = (name_item && cJSON_IsString(name_item)) ? name_item->valuestring : "Smart Robot";
     int32_t current_amount = (current_item && cJSON_IsNumber(current_item)) ? (int32_t)current_item->valuedouble : 0;
     int32_t target_amount = (target_item && cJSON_IsNumber(target_item)) ? (int32_t)target_item->valuedouble : 2000000;
-    std::string currency = (currency_item && cJSON_IsString(currency_item)) ? currency_item->valuestring : "d";
+    std::string currency = (currency_item && cJSON_IsString(currency_item)) ? currency_item->valuestring : "đ";
 
     GoalType goal_type = static_cast<GoalType>(goal_type_int);
 
@@ -221,6 +223,7 @@ void BuddySyncService::HandleSavingsPayload(cJSON* root) {
             if (savings_screen_) {
                 savings_screen_->SetGoal(goal_type, goal_name, current_amount, target_amount, currency);
             }
+            BuddyToastOverlay::GetInstance().Show("Heo Đất Tiết Kiệm! 🐷", "Mục tiêu: " + goal_name, ToastType::kReward, 4000);
         });
     }
 }

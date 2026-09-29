@@ -20,7 +20,7 @@ public:
     static BuddySyncService& GetInstance();
 
     void Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen);
-    void Start(const std::string& broker_host = "", int broker_port = 1883);
+    void Start(const std::string& broker_host = "", int broker_port = 0);
     void Stop();
 
     // Outbound notifications from Device -> Server
