@@ -5,6 +5,8 @@
 #include "application.h"
 #include "board.h"
 #include "settings.h"
+#include "buddy_toast_overlay.h"
+#include "buddy_reminder_scheduler.h"
 
 #define TAG "BuddySyncService"
 
@@ -16,19 +18,24 @@ BuddySyncService& BuddySyncService::GetInstance() {
 BuddySyncService::BuddySyncService() {
     Settings settings("buddy_sync", false);
     device_id_ = settings.GetString("device_id", "default");
-    broker_host_ = settings.GetString("broker_host", "192.168.2.19");
-    broker_port_ = settings.GetInt("broker_port", 1883);
+    broker_host_ = settings.GetString("broker_host", "esp32-ziaozhi.onrender.com");
+    broker_port_ = settings.GetInt("broker_port", 443);
 }
 
 BuddySyncService::~BuddySyncService() {
     Stop();
 }
 
-void BuddySyncService::Initialize(TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen) {
+void BuddySyncService::Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen) {
     std::lock_guard<std::mutex> lock(mutex_);
+    home_screen_ = home_screen;
     quest_screen_ = quest_screen;
     savings_screen_ = savings_screen;
     family_screen_ = family_screen;
+
+    // Start Reminder Scheduler
+    BuddyReminderScheduler::GetInstance().Initialize();
+
     ESP_LOGI(TAG, "BuddySyncService initialized for device_id: %s", device_id_.c_str());
 }
 
@@ -151,21 +158,43 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
         cJSON* id = cJSON_GetObjectItem(item, "id");
         cJSON* title = cJSON_GetObjectItem(item, "title");
         cJSON* progress = cJSON_GetObjectItem(item, "progress_text");
+        cJSON* scheduled = cJSON_GetObjectItem(item, "scheduled_time");
+        cJSON* start = cJSON_GetObjectItem(item, "start_time");
+        cJSON* duration = cJSON_GetObjectItem(item, "duration");
+        cJSON* stars = cJSON_GetObjectItem(item, "reward_stars");
+        cJSON* category = cJSON_GetObjectItem(item, "category");
         cJSON* completed = cJSON_GetObjectItem(item, "completed");
 
         q.id = (id && cJSON_IsString(id)) ? id->valuestring : ("quest_" + std::to_string(i));
         q.title = (title && cJSON_IsString(title)) ? title->valuestring : "";
         q.progress_text = (progress && cJSON_IsString(progress)) ? progress->valuestring : "";
+        q.scheduled_time = (scheduled && cJSON_IsString(scheduled)) ? scheduled->valuestring : "";
+        q.start_time = (start && cJSON_IsString(start)) ? start->valuestring : "";
+        q.duration = (duration && cJSON_IsNumber(duration)) ? duration->valueint : 20;
+        q.reward_stars = (stars && cJSON_IsNumber(stars)) ? stars->valueint : 1;
+        q.category = (category && cJSON_IsString(category)) ? category->valuestring : "habit";
         q.completed = (completed && cJSON_IsTrue(completed));
 
         quests.push_back(std::move(q));
     }
 
-    if (quest_screen_ && !quests.empty()) {
+    if (!quests.empty()) {
         Application::GetInstance().Schedule([this, quests]() {
+            int total = quests.size();
+            int completed = 0;
+            for (const auto& q : quests) {
+                if (q.completed) completed++;
+            }
+
             if (quest_screen_) {
                 quest_screen_->SetQuests(quests);
             }
+            if (home_screen_) {
+                home_screen_->SetQuestSummary(total, completed);
+            }
+
+            BuddyReminderScheduler::GetInstance().UpdateQuests(quests);
+            BuddyToastOverlay::GetInstance().Show("Đã cập nhật việc", "Hôm nay con có " + std::to_string(total) + " việc cần làm!", ToastType::kNewQuest, 4000);
         });
     }
 }
@@ -205,13 +234,14 @@ void BuddySyncService::HandleFamilyMessagePayload(cJSON* root) {
 
     std::string sender = (sender_item && cJSON_IsString(sender_item)) ? sender_item->valuestring : "Mom";
     std::string message = (msg_item && cJSON_IsString(msg_item)) ? msg_item->valuestring : "";
-    std::string timestamp = (time_item && cJSON_IsString(time_item)) ? time_item->valuestring : "Today";
+    std::string timestamp = (time_item && cJSON_IsString(time_item)) ? time_item->valuestring : "Hôm nay";
 
     if (family_screen_) {
         Application::GetInstance().Schedule([this, sender, message, timestamp]() {
             if (family_screen_) {
                 family_screen_->SetMessage(sender, message, timestamp);
             }
+            BuddyToastOverlay::GetInstance().Show("Tin nhắn từ " + sender, message, ToastType::kMessage, 5000);
         });
     }
 }
@@ -230,6 +260,11 @@ void BuddySyncService::NotifyQuestCompleted(const std::string& quest_id) {
 
     cJSON_free(json_str);
     cJSON_Delete(root);
+
+    // Show celebratory toast
+    Application::GetInstance().Schedule([]() {
+        BuddyToastOverlay::GetInstance().Show("Tuyệt vời!", "Con đã hoàn thành việc xuất sắc!", ToastType::kReward, 4000);
+    });
 }
 
 void BuddySyncService::NotifyFamilyLove() {

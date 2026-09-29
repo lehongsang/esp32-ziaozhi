@@ -265,7 +265,7 @@ void QuestSubflowScreen::RenderViewDetails() {
     lv_obj_add_event_cb(btn_start, OnStartBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* btn_txt = lv_label_create(btn_start);
-    lv_label_set_text(btn_txt, IsFeedQuest() ? "Feed Piggy  ▶" : (IsReadingQuest() ? "Read story  ▶" : (IsMovementQuest() ? "Start Exercise  ▶" : "Start now  ▶")));
+    lv_label_set_text(btn_txt, IsFeedQuest() ? "Feed Piggy >" : (IsReadingQuest() ? "Read story >" : (IsMovementQuest() ? "Start Exercise >" : "Start now >")));
     lv_obj_set_style_text_font(btn_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(btn_txt);
@@ -340,7 +340,7 @@ void QuestSubflowScreen::RenderReadStory() {
     lv_obj_t* card_title = lv_label_create(scroll_card);
     lv_label_set_long_mode(card_title, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(card_title, 276);
-    std::string title_with_icon = "📖 " + current_story_.title;
+    std::string title_with_icon = current_story_.title;
     lv_label_set_text(card_title, title_with_icon.c_str());
     lv_obj_set_style_text_font(card_title, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(card_title, lv_color_hex(0x38BDF8), 0);
@@ -372,7 +372,7 @@ void QuestSubflowScreen::RenderReadStory() {
     lv_obj_add_event_cb(btn_quiz, OnStoryNextBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* btn_txt = lv_label_create(btn_quiz);
-    lv_label_set_text(btn_txt, "Take Quiz (3 Qs)  ✍️");
+    lv_label_set_text(btn_txt, "Take Quiz (3 Qs)");
     lv_obj_set_style_text_font(btn_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(btn_txt);
@@ -418,7 +418,7 @@ void QuestSubflowScreen::RenderDoQuiz() {
     lv_obj_t* counter = lv_label_create(top_row);
     char counter_buf[64];
     if (IsReadingQuest()) {
-        snprintf(counter_buf, sizeof(counter_buf), "Story %u/%u • Q %u/%u", (unsigned)current_reading_story_idx_, (unsigned)total_reading_stories_, (unsigned)(current_q_idx_ + 1), (unsigned)session_questions_.size());
+        snprintf(counter_buf, sizeof(counter_buf), "Story %u/%u - Q %u/%u", (unsigned)current_reading_story_idx_, (unsigned)total_reading_stories_, (unsigned)(current_q_idx_ + 1), (unsigned)session_questions_.size());
     } else {
         snprintf(counter_buf, sizeof(counter_buf), "Question %u / %u", (unsigned)(current_q_idx_ + 1), (unsigned)session_questions_.size());
     }
@@ -541,18 +541,18 @@ void QuestSubflowScreen::RenderMidCheer() {
     lv_obj_t* top_lbl = lv_label_create(root_);
     if (IsReadingQuest()) {
         char buf[48];
-        snprintf(buf, sizeof(buf), "🌟 Story %u/%u Done!", (unsigned)current_reading_story_idx_, (unsigned)total_reading_stories_);
+        snprintf(buf, sizeof(buf), "Story %u/%u Done!", (unsigned)current_reading_story_idx_, (unsigned)total_reading_stories_);
         lv_label_set_text(top_lbl, buf);
     } else {
-        lv_label_set_text(top_lbl, "🌟 Halfway There! (5/10)");
+        lv_label_set_text(top_lbl, "Halfway There! (5/10)");
     }
     lv_obj_set_style_text_color(top_lbl, lv_color_hex(0x22C55E), 0);
 
     lv_obj_t* cheer_lbl = lv_label_create(root_);
     if (IsReadingQuest()) {
-        lv_label_set_text(cheer_lbl, "Great reading! Ready for Story 2? ✨");
+        lv_label_set_text(cheer_lbl, "Great reading! Ready for Story 2?");
     } else {
-        lv_label_set_text(cheer_lbl, "Great job! Keep it up! ✨");
+        lv_label_set_text(cheer_lbl, "Great job! Keep it up!");
     }
     lv_obj_set_style_text_color(cheer_lbl, lv_color_hex(0xFFD166), 0);
     lv_obj_set_style_margin_top(cheer_lbl, 1, 0);
@@ -573,9 +573,9 @@ void QuestSubflowScreen::RenderMidCheer() {
 
     lv_obj_t* btn_txt = lv_label_create(btn_cont);
     if (IsReadingQuest()) {
-        lv_label_set_text(btn_txt, "Read Story 2  ▶");
+        lv_label_set_text(btn_txt, "Read Story 2 >");
     } else {
-        lv_label_set_text(btn_txt, "Continue (6/10) ▶");
+        lv_label_set_text(btn_txt, "Continue (6/10) >");
     }
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(btn_txt);
@@ -584,7 +584,7 @@ void QuestSubflowScreen::RenderMidCheer() {
 void QuestSubflowScreen::RenderCompleted() {
     // 1. Title
     lv_obj_t* top_lbl = lv_label_create(root_);
-    lv_label_set_text(top_lbl, "Quest Completed! 🎉");
+    lv_label_set_text(top_lbl, "Quest Completed!");
     lv_obj_set_style_text_color(top_lbl, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_margin_top(top_lbl, 2, 0);
 
@@ -607,9 +607,9 @@ void QuestSubflowScreen::RenderCompleted() {
     lv_obj_t* score_lbl = lv_label_create(root_);
     char buf[64];
     if (IsReadingQuest()) {
-        snprintf(buf, sizeof(buf), "2/2 Stories completed - Super Reader! 📚");
+        snprintf(buf, sizeof(buf), "2/2 Stories completed - Super Reader!");
     } else if (IsMovementQuest()) {
-        snprintf(buf, sizeof(buf), "20 min done - Super energetic! 🔥");
+        snprintf(buf, sizeof(buf), "20 min done - Super energetic!");
     } else {
         snprintf(buf, sizeof(buf), "%u / %u - Amazing work!", (unsigned)session_questions_.size(), (unsigned)session_questions_.size());
     }
@@ -626,18 +626,18 @@ void QuestSubflowScreen::RenderCompleted() {
     lv_obj_add_event_cb(btn_claim, OnClaimRewardBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* btn_txt = lv_label_create(btn_claim);
-    lv_label_set_text(btn_txt, "Get Reward 🎁");
+    lv_label_set_text(btn_txt, "Get Reward");
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0x0F172A), 0);
     lv_obj_center(btn_txt);
 }
 
 static const char* kExerciseTips[] = {
-    "Jumping Jacks 🏃",
-    "Stretch & Reach 🧘",
-    "High Knees Run 🤸",
-    "Dance to the Beat 💃",
-    "Squats & Lunges 🦵",
-    "Deep Breaths & Relax 🌬️"
+    "Jumping Jacks",
+    "Stretch & Reach",
+    "High Knees Run",
+    "Dance to the Beat",
+    "Squats & Lunges",
+    "Deep Breaths & Relax"
 };
 static const size_t kExerciseTipsCount = sizeof(kExerciseTips) / sizeof(kExerciseTips[0]);
 
@@ -755,7 +755,7 @@ void QuestSubflowScreen::RenderMovementTimer() {
     lv_obj_add_event_cb(btn_finish, OnMovementFinishBtnCb, LV_EVENT_CLICKED, this);
 
     lv_obj_t* finish_lbl = lv_label_create(btn_finish);
-    lv_label_set_text(finish_lbl, "Finish  ⭐");
+    lv_label_set_text(finish_lbl, "Finish");
     lv_obj_set_style_text_font(finish_lbl, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(finish_lbl, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(finish_lbl);
@@ -853,7 +853,7 @@ void QuestSubflowScreen::RenderFeedPiggyWaiting() {
     lv_obj_center(back_icon);
 
     lv_obj_t* title_lbl = lv_label_create(top_bar);
-    lv_label_set_text(title_lbl, "Feed Piggy 🐷");
+    lv_label_set_text(title_lbl, "Feed Piggy");
     lv_obj_set_style_text_font(title_lbl, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(0xFFFFFF), 0);
 
@@ -868,7 +868,7 @@ void QuestSubflowScreen::RenderFeedPiggyWaiting() {
 
     lv_obj_t* love_txt = lv_label_create(love_badge);
     char lbuf[16];
-    snprintf(lbuf, sizeof(lbuf), "❤️ %u/3", (unsigned int)feed_count_);
+    snprintf(lbuf, sizeof(lbuf), "%u/3", (unsigned int)feed_count_);
     lv_label_set_text(love_txt, lbuf);
     lv_obj_set_style_text_font(love_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(love_txt, lv_color_hex(0xF472B6), 0);
@@ -986,7 +986,7 @@ void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
     lv_obj_center(back_icon);
 
     lv_obj_t* title_lbl = lv_label_create(top_bar);
-    lv_label_set_text(title_lbl, "Happy Piggy! ✨");
+    lv_label_set_text(title_lbl, "Happy Piggy!");
     lv_obj_set_style_text_font(title_lbl, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(0x4ADE80), 0);
 
@@ -1001,7 +1001,7 @@ void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
 
     lv_obj_t* love_txt = lv_label_create(love_badge);
     char lbuf[16];
-    snprintf(lbuf, sizeof(lbuf), "❤️ %u/3", (unsigned int)feed_count_);
+    snprintf(lbuf, sizeof(lbuf), "%u/3", (unsigned int)feed_count_);
     lv_label_set_text(love_txt, lbuf);
     lv_obj_set_style_text_font(love_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(love_txt, lv_color_hex(0x4ADE80), 0);
@@ -1047,7 +1047,7 @@ void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
         }, LV_EVENT_CLICKED, this);
 
         lv_obj_t* again_txt = lv_label_create(btn_again);
-        lv_label_set_text(again_txt, "Feed more 🍽️");
+        lv_label_set_text(again_txt, "Feed more");
         lv_obj_set_style_text_font(again_txt, &font_noto_sans_basic_16_4, 0);
         lv_obj_set_style_text_color(again_txt, lv_color_hex(0xFFFFFF), 0);
         lv_obj_center(again_txt);
@@ -1063,7 +1063,7 @@ void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
     }, LV_EVENT_CLICKED, this);
 
     lv_obj_t* finish_txt = lv_label_create(btn_finish);
-    lv_label_set_text(finish_txt, (feed_count_ >= 3) ? "Claim Reward ✨" : "Claim ✨");
+    lv_label_set_text(finish_txt, (feed_count_ >= 3) ? "Claim Reward" : "Claim");
     lv_obj_set_style_text_font(finish_txt, &font_noto_sans_basic_16_4, 0);
     lv_obj_set_style_text_color(finish_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(finish_txt);
@@ -1072,7 +1072,7 @@ void QuestSubflowScreen::RenderFeedPiggyFed(const std::string& food_name) {
 void QuestSubflowScreen::RenderReward() {
     // 1. Title
     lv_obj_t* reward_lbl = lv_label_create(root_);
-    lv_label_set_text(reward_lbl, "You earned +2 Corn! 🌽");
+    lv_label_set_text(reward_lbl, "You earned +2 Corn!");
     lv_obj_set_style_text_color(reward_lbl, lv_color_hex(0x4ADE80), 0);
     lv_obj_set_style_margin_top(reward_lbl, 2, 0);
 
@@ -1100,7 +1100,7 @@ void QuestSubflowScreen::RenderReward() {
     }, LV_EVENT_CLICKED, this);
 
     lv_obj_t* btn_txt = lv_label_create(btn_done);
-    lv_label_set_text(btn_txt, "Claim Reward  ✨");
+    lv_label_set_text(btn_txt, "Claim Reward");
     lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(btn_txt);
 }

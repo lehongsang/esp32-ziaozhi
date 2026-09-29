@@ -2,9 +2,14 @@ menu "Xiaozhi Assistant"
 
 config OTA_URL
     string "Default OTA URL"
-    default "https://api.tenclass.net/xiaozhi/ota/"
+    default "https://vietbot.vn/ota/"
     help
         The application will access this URL to check for new firmwares and server address.
+
+config ESP_VIDEO_USE_CUSTOMIZED_ESP_H264_VERSION
+    bool
+    default n
+
 
 choice
     prompt "Flash Assets"

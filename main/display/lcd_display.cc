@@ -159,6 +159,7 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
                 .mirror_x = mirror_x,
                 .mirror_y = mirror_y,
             },
+        .rounder_cb = nullptr,
         .color_format = LV_COLOR_FORMAT_RGB565,
         .flags =
             {
@@ -207,19 +208,26 @@ RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     const lvgl_port_display_cfg_t display_cfg = {
         .io_handle = panel_io_,
         .panel_handle = panel_,
+        .control_handle = nullptr,
         .buffer_size = static_cast<uint32_t>(width_ * 20),
         .double_buffer = true,
+        .trans_size = 0,
         .hres = static_cast<uint32_t>(width_),
         .vres = static_cast<uint32_t>(height_),
+        .monochrome = false,
         .rotation =
             {
                 .swap_xy = swap_xy,
                 .mirror_x = mirror_x,
                 .mirror_y = mirror_y,
             },
+        .rounder_cb = nullptr,
+        .color_format = LV_COLOR_FORMAT_RGB565,
         .flags =
             {
                 .buff_dma = 1,
+                .buff_spiram = 0,
+                .sw_rotate = 0,
                 .swap_bytes = 0,
                 .full_refresh = 1,
                 .direct_mode = 1,
@@ -261,6 +269,7 @@ MipiLcdDisplay::MipiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel
         .control_handle = nullptr,
         .buffer_size = static_cast<uint32_t>(width_ * 50),
         .double_buffer = false,
+        .trans_size = 0,
         .hres = static_cast<uint32_t>(width_),
         .vres = static_cast<uint32_t>(height_),
         .monochrome = false,
@@ -271,11 +280,16 @@ MipiLcdDisplay::MipiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel
                 .mirror_x = mirror_x,
                 .mirror_y = mirror_y,
             },
+        .rounder_cb = nullptr,
+        .color_format = LV_COLOR_FORMAT_RGB565,
         .flags =
             {
                 .buff_dma = true,
                 .buff_spiram = false,
                 .sw_rotate = true,
+                .swap_bytes = false,
+                .full_refresh = false,
+                .direct_mode = false,
             },
     };
 
@@ -878,8 +892,9 @@ void LcdDisplay::SetupUI() {
     lv_obj_align(preview_image_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(preview_image_, LV_OBJ_FLAG_HIDDEN);
 
-    /* Layer 1: Top bar - for status icons */
+    /* Layer 1: Top bar - for status icons (hidden for Buddy UI) */
     top_bar_ = lv_obj_create(screen);
+    lv_obj_add_flag(top_bar_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_size(top_bar_, LV_HOR_RES, LV_SIZE_CONTENT);
     lv_obj_set_style_radius(top_bar_, 0, 0);
     lv_obj_set_style_bg_opa(top_bar_, LV_OPA_TRANSP, 0);  // Transparent top bar for Buddy UI
@@ -1070,6 +1085,13 @@ void LcdDisplay::SetPreviewImage(std::unique_ptr<LvglImage> image) {
 
 void LcdDisplay::SetChatMessage(const char* role, const char* content) {
     ESP_LOGI(TAG, "ChatMessage [%s]: %s", role ? role : "", content ? content : "");
+    if (content != nullptr && strlen(content) > 0 && role != nullptr) {
+        // Only forward assistant/user voice transcripts to AiTutorScreen
+        if (strcmp(role, "assistant") == 0 || strcmp(role, "user") == 0) {
+            DisplayLockGuard lock(this);
+            BuddyScreenManager::GetInstance().GetTutorScreen().SetSpeechText(content);
+        }
+    }
 }
 
 void LcdDisplay::ClearChatMessages() {

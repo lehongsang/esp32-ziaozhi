@@ -9,12 +9,14 @@
 #include <lvgl.h>
 
 #include "screen_types.h"
+#include "buddy_piggy_screen.h"
 #include "buddy_home_screen.h"
 #include "today_quest_screen.h"
 #include "ai_tutor_screen.h"
 #include "savings_screen.h"
 #include "family_moment_screen.h"
 #include "settings_screen.h"
+#include "buddy_onboarding_screen.h"
 
 class BuddyScreenManager {
 public:
@@ -24,12 +26,14 @@ public:
     void SwitchTo(BuddyScreenId id, bool anim = true);
     BuddyScreenId GetCurrentScreen() const { return current_screen_; }
 
+    BuddyPiggyScreen& GetPiggyScreen() { return piggy_screen_; }
     BuddyHomeScreen& GetHomeScreen() { return home_screen_; }
     TodayQuestScreen& GetQuestScreen() { return quest_screen_; }
     AiTutorScreen& GetTutorScreen() { return tutor_screen_; }
     SavingsScreen& GetSavingsScreen() { return savings_screen_; }
     FamilyMomentScreen& GetFamilyScreen() { return family_screen_; }
     SettingsScreen& GetSettingsScreen() { return settings_screen_; }
+    BuddyOnboardingScreen& GetOnboardingScreen() { return onboarding_screen_; }
 
     void OnScreenChanged(std::function<void(BuddyScreenId new_screen)> callback);
 
@@ -45,15 +49,17 @@ private:
     lv_obj_t* indicator_container_ = nullptr;
     lv_obj_t* indicator_dots_[static_cast<int>(BuddyScreenId::kScreenCount)] = {nullptr};
 
-    BuddyScreenId current_screen_ = BuddyScreenId::kScreenHome;
+    BuddyScreenId current_screen_ = BuddyScreenId::kScreenPiggy;
     std::function<void(BuddyScreenId)> on_screen_changed_;
 
+    BuddyPiggyScreen piggy_screen_;
     BuddyHomeScreen home_screen_;
     TodayQuestScreen quest_screen_;
     AiTutorScreen tutor_screen_;
     SavingsScreen savings_screen_;
     FamilyMomentScreen family_screen_;
     SettingsScreen settings_screen_;
+    BuddyOnboardingScreen onboarding_screen_;
 
     lv_obj_t* top_pull_zone_ = nullptr;
     lv_point_t touch_start_point_ = {0, 0};

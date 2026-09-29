@@ -1,5 +1,10 @@
 #include "screen_manager.h"
 #include "buddy_sync_service.h"
+#include "buddy_toast_overlay.h"
+#include "buddy_reminder_scheduler.h"
+#include "settings.h"
+#include "board.h"
+#include "application.h"
 #include <esp_log.h>
 
 #define TAG "BuddyScreenManager"
@@ -30,26 +35,30 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     lv_obj_set_size(tileview_, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_opa(tileview_, LV_OPA_TRANSP, 0);
 
-    // 3. Add 5 Main Screens
-    // Screen 0: Home
+    // 3. Add 6 Main Screens
+    // Screen 0: Piggy Mascot & Greeting (Main Screen 1)
     tiles_[0] = lv_tileview_add_tile(tileview_, 0, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
-    home_screen_.Create(tiles_[0]);
+    piggy_screen_.Create(tiles_[0]);
 
-    // Screen 1: Today's Quest
+    // Screen 1: Today's Overview (Main Screen 2 - 3D Bear Mascot + 2 Big Action Buttons conforming to Image 3)
     tiles_[1] = lv_tileview_add_tile(tileview_, 1, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
-    quest_screen_.Create(tiles_[1]);
+    home_screen_.Create(tiles_[1]);
 
-    // Screen 2: AI Tutor
+    // Screen 2: Today's Quest (Mission Screen 3)
     tiles_[2] = lv_tileview_add_tile(tileview_, 2, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
-    tutor_screen_.Create(tiles_[2]);
+    quest_screen_.Create(tiles_[2]);
 
-    // Screen 3: Savings Dream Goal
+    // Screen 3: AI Tutor (Screen 4)
     tiles_[3] = lv_tileview_add_tile(tileview_, 3, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
-    savings_screen_.Create(tiles_[3]);
+    tutor_screen_.Create(tiles_[3]);
 
-    // Screen 4: Family Moment
+    // Screen 4: Savings Dream Goal (Screen 5)
     tiles_[4] = lv_tileview_add_tile(tileview_, 4, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
-    family_screen_.Create(tiles_[4]);
+    savings_screen_.Create(tiles_[4]);
+
+    // Screen 5: Family Moment (Screen 6)
+    tiles_[5] = lv_tileview_add_tile(tileview_, 5, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    family_screen_.Create(tiles_[5]);
 
     // 4. Create Page Indicator Dots at Bottom
     CreatePageIndicators(bg);
@@ -66,6 +75,70 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
 
     // 6. Create Settings Control Center Overlay (Sits on top layer)
     settings_screen_.Create(bg);
+
+    // 6.1 Initialize Toast Notification Overlay (Top layer)
+    BuddyToastOverlay::GetInstance().Initialize(lv_layer_top());
+
+    // 6.2 Bind Screen 1 Action Buttons
+    home_screen_.SetOnViewQuests([this]() {
+        ESP_LOGI(TAG, "Navigating from Overview to Quest Screen");
+        SwitchTo(BuddyScreenId::kScreenQuest);
+    });
+
+    home_screen_.SetOnTalkBuddy([this]() {
+        ESP_LOGI(TAG, "Navigating from Overview to AI Tutor Screen & starting chat");
+        SwitchTo(BuddyScreenId::kScreenTutor);
+        auto dev_state = Application::GetInstance().GetDeviceState();
+        if (dev_state == kDeviceStateWifiConfiguring || dev_state == kDeviceStateStarting) {
+            BuddyToastOverlay::GetInstance().Show("Chưa có Wi-Fi!", "Hãy vuốt trên xuống để kết nối mạng.", ToastType::kWarning, 3000);
+        } else {
+            Application::GetInstance().ToggleChatState();
+        }
+    });
+
+    // 6.3 Create Onboarding 3D Piggy Screen (Sits on root for first boot / name setup)
+    onboarding_screen_.Create(bg);
+    onboarding_screen_.SetOnNameConfirmed([this](const std::string& name) {
+        ESP_LOGI(TAG, "Saving child name to NVS: %s", name.c_str());
+        Settings settings("buddy_profile", true);
+        settings.SetString("child_name", name);
+
+        // Update greetings on both screens
+        piggy_screen_.SetGreeting(name);
+        home_screen_.SetGreeting(name, 3);
+        onboarding_screen_.Hide();
+        SwitchTo(BuddyScreenId::kScreenPiggy);
+
+        BuddyToastOverlay::GetInstance().Show("Xin chào " + name + "!", "Buddy rất vui được đồng hành cùng con!", ToastType::kReward, 4000);
+    });
+
+    // Check if child name is already configured
+    Settings profile_settings("buddy_profile", false);
+    std::string saved_name = profile_settings.GetString("child_name", "Minh");
+    if (saved_name.empty()) {
+        ESP_LOGI(TAG, "No child name found in NVS. Launching 3D Piggy Onboarding Screen...");
+        onboarding_screen_.Show();
+        saved_name = "Minh";
+    } else {
+        ESP_LOGI(TAG, "Loaded child name from NVS: %s", saved_name.c_str());
+        piggy_screen_.SetGreeting(saved_name);
+    }
+
+    // Connect Quest Screen to Home Screen for real-time task count & progress sync
+    quest_screen_.SetOnQuestsChanged([this, saved_name](int total, int completed) {
+        ESP_LOGI(TAG, "Quests changed: %d total, %d completed. Updating Home Screen...", total, completed);
+        Settings s("buddy_profile", false);
+        std::string current_name = s.GetString("child_name", saved_name);
+        home_screen_.SetQuestSummary(total, completed, current_name);
+    });
+
+    // Synchronize initial quest counts and progress to home screen
+    int initial_total = quest_screen_.GetQuests().size();
+    int initial_completed = 0;
+    for (const auto& q : quest_screen_.GetQuests()) {
+        if (q.completed) initial_completed++;
+    }
+    home_screen_.SetQuestSummary(initial_total, initial_completed, saved_name);
 
     // 7. Register Scroll, Gesture and Touch Tracking Events on Tileview and Tiles
     lv_obj_add_event_cb(tileview_, TileviewScrollCb, LV_EVENT_VALUE_CHANGED, this);
@@ -87,20 +160,29 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     UpdateIndicators(0);
 
     // 8. Initialize Backend Sync Service & Hooks
-    BuddySyncService::GetInstance().Initialize(&quest_screen_, &savings_screen_, &family_screen_);
+    BuddySyncService::GetInstance().Initialize(&home_screen_, &quest_screen_, &savings_screen_, &family_screen_);
     family_screen_.OnLikeClicked([](bool liked) {
         if (liked) {
             BuddySyncService::GetInstance().NotifyFamilyLove();
         }
     });
 
-    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 5 screens + Control Center Dropdown");
+    // 9. Bind Reminder Scheduler Trigger -> Automatically show Next Task if on time
+    BuddyReminderScheduler::GetInstance().SetOnTriggerReminder([this](const QuestItemData& quest, int minutes_left) {
+        if (minutes_left == 0) {
+            ESP_LOGI(TAG, "Task '%s' is starting now, navigating to Quest screen", quest.title.c_str());
+            SwitchTo(BuddyScreenId::kScreenQuest);
+        }
+    });
+
+    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 5 screens, 3D Onboarding, Toast Overlay & Reminders");
 }
 
 void BuddyScreenManager::CreatePageIndicators(lv_obj_t* parent) {
     indicator_container_ = lv_obj_create(parent);
     lv_obj_remove_style_all(indicator_container_);
-    lv_obj_set_size(indicator_container_, 80, 16);
+    lv_obj_add_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN); // Hidden for ultra-clean UI
+    lv_obj_set_size(indicator_container_, 96, 16);
     lv_obj_align(indicator_container_, LV_ALIGN_BOTTOM_MID, 0, -4);
     lv_obj_set_flex_flow(indicator_container_, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(indicator_container_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

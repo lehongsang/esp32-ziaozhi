@@ -36,9 +36,26 @@ function initTables() {
             device_id TEXT,
             title TEXT,
             progress_text TEXT,
+            scheduled_time TEXT DEFAULT '',
+            start_time TEXT DEFAULT '',
+            duration INTEGER DEFAULT 20,
+            reward_stars INTEGER DEFAULT 1,
+            category TEXT DEFAULT 'habit',
             completed INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        // Migration helper if columns don't exist yet
+        const columnsToAdd = [
+            `ALTER TABLE quests ADD COLUMN scheduled_time TEXT DEFAULT ''`,
+            `ALTER TABLE quests ADD COLUMN start_time TEXT DEFAULT ''`,
+            `ALTER TABLE quests ADD COLUMN duration INTEGER DEFAULT 20`,
+            `ALTER TABLE quests ADD COLUMN reward_stars INTEGER DEFAULT 1`,
+            `ALTER TABLE quests ADD COLUMN category TEXT DEFAULT 'habit'`
+        ];
+        columnsToAdd.forEach(sql => {
+            db.run(sql, () => {}); // Ignore error if column exists
+        });
 
         // 3. Savings & Dream Goal Table
         db.run(`CREATE TABLE IF NOT EXISTS savings (
@@ -81,16 +98,14 @@ function initTables() {
                 db.run(`INSERT INTO devices (id, name, battery, level, xp) VALUES (?, ?, ?, ?, ?)`,
                     [defaultDeviceId, 'MB Buddy S3', 98, 3, 240]);
 
-                // Initial Quests
+                // Initial Quests according to AC02 MB Junior Mockup (3 Việc hôm nay)
                 const initialQuests = [
-                    ['q_feed', defaultDeviceId, 'Feed Piggy', '0/3', 0],
-                    ['q_math', defaultDeviceId, 'Math homework', '0/10', 0],
-                    ['q_read', defaultDeviceId, 'English reading', '0/2', 0],
-                    ['q_move', defaultDeviceId, 'Do exercise', '20 min', 0],
-                    ['q_parent', defaultDeviceId, "Parent's quest", '0/1', 0]
+                    ['q_math', defaultDeviceId, 'Học Toán', '', '17:00 - 17:20', '17:00', 20, 1, 'math', 1],
+                    ['q_read', defaultDeviceId, 'Đọc sách 15 phút', '', '19:30 - 19:45', '19:30', 15, 1, 'read', 1],
+                    ['q_pack', defaultDeviceId, 'Chuẩn bị cặp', '0/1', '21:00 - 21:10', '21:00', 10, 1, 'pack', 0]
                 ];
                 initialQuests.forEach(q => {
-                    db.run(`INSERT INTO quests (id, device_id, title, progress_text, completed) VALUES (?, ?, ?, ?, ?)`, q);
+                    db.run(`INSERT INTO quests (id, device_id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, q);
                 });
 
                 // Initial Savings
@@ -99,7 +114,7 @@ function initTables() {
 
                 // Initial Family Message
                 db.run(`INSERT INTO family_messages (device_id, sender, sender_role, avatar, message, timestamp, liked) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [defaultDeviceId, 'Mom', 'mom', 'mom_avatar.png', 'Mẹ rất tự hào về con! Cố gắng hoàn thành bài toán nhé! 💖', Math.floor(Date.now() / 1000), 0]);
+                    [defaultDeviceId, 'Mom', 'mom', 'mom_avatar.png', 'Mẹ rất tự hào về con! Hoàn thành nốt việc chuẩn bị cặp nhé! 💖', Math.floor(Date.now() / 1000), 0]);
             }
         });
     });

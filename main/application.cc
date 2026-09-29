@@ -11,6 +11,7 @@
 #include "text_glyph_payload.h"
 #include "websocket_protocol.h"
 #include "display/buddy_ui/buddy_sync_service.h"
+#include "display/buddy_ui/buddy_toast_overlay.h"
 
 #include <driver/gpio.h>
 #include <esp_log.h>
@@ -359,6 +360,7 @@ void Application::HandleActivationDoneEvent() {
     Schedule([this]() {
         // Play the success sound to indicate the device is ready
         audio_service_.PlaySound(Lang::Sounds::OGG_SUCCESS);
+        BuddyToastOverlay::GetInstance().Show("Đã kết nối Wi-Fi!", "Buddy đã sẵn sàng trò chuyện cùng con! 🌟", ToastType::kReward, 4000);
     });
 }
 

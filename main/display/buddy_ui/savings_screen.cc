@@ -163,7 +163,7 @@ void SavingsScreen::BuildEmptyView() {
     lv_obj_add_event_cb(top_pill, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
 
     lv_obj_t* title = lv_label_create(top_pill);
-    lv_label_set_text(title, "✨ Dream Goal");
+    lv_label_set_text(title, "Mục tiêu ước mơ");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFD166), 0);
 
     // 3. Bottom Floating Glass Action Card (Golden Sparkle Capsule Pill)
@@ -184,7 +184,7 @@ void SavingsScreen::BuildEmptyView() {
     lv_obj_add_event_cb(bottom_card, OnCreateGoalClicked, LV_EVENT_CLICKED, this);
 
     lv_obj_t* c_lbl = lv_label_create(bottom_card);
-    lv_label_set_text(c_lbl, "✨ Set Dream Goal ✨");
+    lv_label_set_text(c_lbl, "Đặt mục tiêu");
     lv_obj_set_style_text_color(c_lbl, lv_color_hex(0xFFE082), 0);
 }
 
@@ -325,7 +325,7 @@ void SavingsScreen::RefreshGoalSelectionList() {
 
         // Centered Goal Name (+ Star if Active)
         lv_obj_t* name_lbl = lv_label_create(card);
-        std::string title_str = (is_active ? "⭐ " : "") + g.name;
+        std::string title_str = (is_active ? "[*] " : "") + g.name;
         lv_label_set_text(name_lbl, title_str.c_str());
         lv_obj_set_style_text_color(name_lbl, is_active ? lv_color_hex(0xFFD166) : lv_color_hex(0xFFFFFF), 0);
         lv_obj_set_style_text_align(name_lbl, LV_TEXT_ALIGN_CENTER, 0);

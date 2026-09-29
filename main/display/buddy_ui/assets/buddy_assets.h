@@ -10,6 +10,7 @@ extern "C" {
 extern const lv_image_dsc_t buddy_bg_day;
 extern const lv_image_dsc_t buddy_bg_night;
 extern const lv_image_dsc_t buddy_bg_tutor;
+extern const lv_image_dsc_t buddy_bear_mascot;
 extern const lv_image_dsc_t buddy_piggy_cheer;
 extern const lv_image_dsc_t buddy_reward_corn;
 extern const lv_image_dsc_t goal_art_bike;

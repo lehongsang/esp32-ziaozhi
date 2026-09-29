@@ -10,6 +10,7 @@
 #include <mqtt.h>
 #include <cJSON.h>
 
+#include "buddy_home_screen.h"
 #include "today_quest_screen.h"
 #include "savings_screen.h"
 #include "family_moment_screen.h"
@@ -18,7 +19,7 @@ class BuddySyncService {
 public:
     static BuddySyncService& GetInstance();
 
-    void Initialize(TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen);
+    void Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen);
     void Start(const std::string& broker_host = "", int broker_port = 1883);
     void Stop();
 
@@ -42,6 +43,7 @@ private:
     void HandleSavingsPayload(cJSON* root);
     void HandleFamilyMessagePayload(cJSON* root);
 
+    BuddyHomeScreen* home_screen_ = nullptr;
     TodayQuestScreen* quest_screen_ = nullptr;
     SavingsScreen* savings_screen_ = nullptr;
     FamilyMomentScreen* family_screen_ = nullptr;

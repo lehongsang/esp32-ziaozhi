@@ -100,15 +100,20 @@ aedes.on('publish', (packet, client) => {
                 broadcastEvent('device_status', { deviceId, battery, level, xp });
 
                 // Auto hydrate full state to newly connected device
-                db.all(`SELECT id, title, progress_text, completed FROM quests WHERE device_id = ? ORDER BY sort_order ASC`, [deviceId], (err, quests) => {
+                db.all(`SELECT id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed FROM quests WHERE device_id = ? ORDER BY id ASC`, [deviceId], (err, quests) => {
                     if (!err && quests && quests.length > 0) {
                         const formattedQuests = quests.map(q => ({
                             id: q.id,
                             title: q.title,
                             progress_text: q.progress_text,
+                            scheduled_time: q.scheduled_time || '',
+                            start_time: q.start_time || '',
+                            duration: q.duration || 20,
+                            reward_stars: q.reward_stars || 1,
+                            category: q.category || 'habit',
                             completed: q.completed === 1
                         }));
-                        publishToDevice(deviceId, 'quests/set', formattedQuests);
+                        publishToDevice(deviceId, 'quests/set', { quests: formattedQuests });
                     }
                 });
 

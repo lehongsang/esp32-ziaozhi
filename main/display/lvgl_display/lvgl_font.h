@@ -12,12 +12,13 @@ public:
 // Built-in font
 class LvglBuiltInFont : public LvglFont {
 public:
-    LvglBuiltInFont(const lv_font_t* font) : font_(*font) {}
-    virtual const lv_font_t* font() const override { return &font_; }
+    LvglBuiltInFont(const lv_font_t* font) : font_(*font), raw_font_(font) {}
+    virtual const lv_font_t* font() const override { return raw_font_ ? raw_font_ : &font_; }
     virtual void SetFallback(const lv_font_t* fallback) override { font_.fallback = fallback; }
 
 private:
     lv_font_t font_{};
+    const lv_font_t* raw_font_ = nullptr;
 };
 
 class LvglCBinFont : public LvglFont {

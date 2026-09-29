@@ -26,6 +26,9 @@ private:
     static void OnCamBtnCb(lv_event_t* e);
     static void OnQuizBtnCb(lv_event_t* e);
 
+    void StartListeningPulse();
+    void StopListeningPulse();
+
     lv_obj_t* container_ = nullptr;
     lv_obj_t* bg_img_ = nullptr;
     lv_obj_t* header_pill_ = nullptr;
@@ -36,6 +39,7 @@ private:
     lv_obj_t* btn_cam_ = nullptr;
     lv_obj_t* btn_quiz_ = nullptr;
 
+    bool is_listening_ = false;
     std::function<void()> on_mic_click_;
     std::function<void()> on_cam_click_;
     std::function<void()> on_quiz_click_;

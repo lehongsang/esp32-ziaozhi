@@ -59,15 +59,16 @@ router.get('/device/:id/quests', (req, res) => {
 
 router.post('/device/:id/quests', (req, res) => {
     const deviceId = req.params.id || 'default';
-    const { id, title, progress_text } = req.body;
+    const { id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category } = req.body;
     if (!id || !title) return res.status(400).json({ error: 'Missing id or title' });
 
-    db.run(`INSERT OR REPLACE INTO quests (id, device_id, title, progress_text, completed) VALUES (?, ?, ?, ?, 0)`,
-        [id, deviceId, title, progress_text || '0/1'], (err) => {
+    db.run(`INSERT OR REPLACE INTO quests (id, device_id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        [id, deviceId, title, progress_text || '', scheduled_time || '', start_time || '', duration || 20, reward_stars || 1, category || 'habit'], (err) => {
             if (err) return res.status(500).json({ error: err.message });
 
             // Fetch full list and push down to device via MQTT
-            db.all(`SELECT * FROM quests WHERE device_id = ?`, [deviceId], (err, allQuests) => {
+            db.all(`SELECT * FROM quests WHERE device_id = ? ORDER BY id ASC`, [deviceId], (err, allQuests) => {
                 publishToDevice(deviceId, 'quests/set', { quests: allQuests });
                 res.json({ success: true, quests: allQuests });
             });
