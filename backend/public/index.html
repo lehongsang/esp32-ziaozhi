@@ -3,177 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MB Buddy - Live Sync Parent Dashboard</title>
+    <title>Buddy Parent Portal - Quản Lý & Đồng Hành Cùng Bé</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
+        <!-- Top Navigation Bar -->
         <header class="dashboard-header">
             <div class="logo-group">
                 <div class="logo-badge">🐷</div>
-                <div>
-                    <h1>MB Buddy Live Sync</h1>
-                    <p class="subtitle">Trung Tâm Điều Khiển & Đồng Bộ Dữ Liệu Thời Gian Thực</p>
+                <div class="brand-text">
+                    <div class="brand-title-row">
+                        <h1>Buddy Parent Portal</h1>
+                        <span class="version-tag">v1.0</span>
+                    </div>
+                    <p class="subtitle">Trung Tâm Đồng Hành & Quản Lý Thói Quen Của Bé</p>
                 </div>
             </div>
-            <div class="device-status-badge">
-                <span class="status-dot online"></span>
-                <span id="deviceStatusText">MQTT Broker Port 1883 • Online</span>
+            <div class="header-right">
+                <div class="device-status-badge">
+                    <span class="status-dot online"></span>
+                    <span id="deviceStatusText">ESP32 Buddy • Trực Tuyến</span>
+                </div>
             </div>
         </header>
 
-        <!-- Main Grid Layout -->
+        <!-- Main Functional Grid -->
         <main class="dashboard-grid">
-            <!-- Col 1: Family Moment (Màn 5) -->
-            <section class="card glass-card">
+            
+            <!-- Module 1: Giao Việc Hôm Nay (Today's Quests) -->
+            <section class="card glass-card quest-card">
                 <div class="card-header">
                     <div class="card-title-group">
-                        <span class="card-icon">💌</span>
-                        <h2>Màn 5: Family Moment</h2>
+                        <div class="icon-wrap quest-icon">🎯</div>
+                        <div>
+                            <h2>Giao Việc Hôm Nay</h2>
+                            <p class="card-sub">Nhiệm vụ rèn luyện thói quen & học tập</p>
+                        </div>
                     </div>
-                    <span class="badge badge-pink">Live Sync</span>
+                    <span class="badge badge-emerald">Tự Động Nhắc Nhở</span>
                 </div>
 
-                <div class="current-preview" id="familyPreviewBox">
-                    <div class="preview-role" id="currentSenderRole">👩 Mom</div>
-                    <p class="preview-text" id="currentMessageText">Đang tải tin nhắn...</p>
-                    <div class="preview-footer">
-                        <span id="currentMessageTime">Vừa xong</span>
-                        <span class="heart-indicator" id="heartIndicator">🤍 Chưa thả tim</span>
-                    </div>
-                </div>
-
-                <form id="sendMessageForm" class="control-form">
-                    <label>Người gửi:</label>
-                    <div class="role-selector">
-                        <label class="role-option">
-                            <input type="radio" name="senderRole" value="mom" checked>
-                            <span class="role-chip">👩 Mom</span>
-                        </label>
-                        <label class="role-option">
-                            <input type="radio" name="senderRole" value="dad">
-                            <span class="role-chip">👨 Dad</span>
-                        </label>
-                        <label class="role-option">
-                            <input type="radio" name="senderRole" value="family">
-                            <span class="role-chip">🏡 Family</span>
-                        </label>
-                    </div>
-
-                    <label for="messageInput">Lời nhắn yêu thương:</label>
-                    <textarea id="messageInput" rows="2" placeholder="Nhập lời nhắn gửi tới màn hình của con..."></textarea>
-                    
-                    <div class="quick-chips">
-                        <button type="button" class="chip" onclick="setQuickMsg('Mẹ yêu con rất nhiều! Cố gắng học giỏi nhé! 💖')">Mẹ yêu con 💖</button>
-                        <button type="button" class="chip" onclick="setQuickMsg('Bố rất tự hào vì con đã hoàn thành bài tập! ⭐')">Bố tự hào ⭐</button>
-                        <button type="button" class="chip" onclick="setQuickMsg('Cả nhà mình cùng đi ăn kem cuối tuần nhé! 🍦')">Đi ăn kem 🍦</button>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" id="btnSendMsg">
-                        <span>Gửi Tin Nhắn Xuống Thiết Bị</span> 🚀
-                    </button>
-                </form>
-            </section>
-
-            <!-- Col 2: Savings & Dream Goal (Màn 4) -->
-            <section class="card glass-card">
-                <div class="card-header">
-                    <div class="card-title-group">
-                        <span class="card-icon">💰</span>
-                        <h2>Màn 4: Savings & Goal</h2>
-                    </div>
-                    <span class="badge badge-amber">NVS & Live</span>
-                </div>
-
-                <div class="savings-summary">
-                    <div class="savings-amount-box">
-                        <span class="label">Số Dư Heo Đất Hiện Tại</span>
-                        <div class="amount-val" id="savingsCurrent">850,000đ</div>
-                        <div class="target-val" id="savingsTarget">Mục tiêu: 2,000,000đ</div>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill" id="savingsProgressFill" style="width: 42.5%;"></div>
-                    </div>
-                    <div class="goal-info-row">
-                        <span id="currentGoalName">🎯 Mục tiêu: Smart Robot</span>
-                        <span id="currentGoalPercent">42.5%</span>
-                    </div>
-                </div>
-
-                <!-- Deposit Form -->
-                <div class="control-form">
-                    <label>Thưởng tiền vào Heo Đất:</label>
-                    <div class="quick-amounts">
-                        <button type="button" class="btn btn-outline" onclick="depositMoney(10000)">+10k</button>
-                        <button type="button" class="btn btn-outline" onclick="depositMoney(20000)">+20k</button>
-                        <button type="button" class="btn btn-outline" onclick="depositMoney(50000)">+50k</button>
-                        <button type="button" class="btn btn-outline" onclick="depositMoney(100000)">+100k</button>
-                    </div>
-                    <div class="custom-deposit-row">
-                        <input type="number" id="customDepositInput" placeholder="Số tiền tùy chỉnh (VNĐ)..." step="5000">
-                        <button type="button" class="btn btn-secondary" onclick="depositCustomMoney()">Cộng tiền</button>
-                    </div>
-
-                    <label style="margin-top: 10px;">Đổi Mục Tiêu Ước Mơ:</label>
-                    <div class="goal-change-row">
-                        <select id="goalSelect">
-                            <option value="1" data-price="2000000">Smart Robot (2,000,000đ)</option>
-                            <option value="0" data-price="3000000">My New Bike (3,000,000đ)</option>
-                            <option value="2" data-price="1500000">LEGO Castle (1,500,000đ)</option>
-                            <option value="8" data-price="2500000">Space Telescope (2,500,000đ)</option>
-                        </select>
-                        <button type="button" class="btn btn-outline" onclick="changeGoal()">Đổi mục tiêu</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Col 3: Today's Quest (Màn 2) -->
-            <section class="card glass-card">
-                <div class="card-header">
-                    <div class="card-title-group">
-                        <span class="card-icon">🎯</span>
-                        <h2>Màn 2: Today's Quest</h2>
-                    </div>
-                    <span class="badge badge-emerald">Real-time</span>
+                <div class="quest-summary-bar" id="questSummaryBar">
+                    <span>Danh sách việc cần làm:</span>
+                    <span class="quest-count" id="questCountBadge">3 việc</span>
                 </div>
 
                 <div class="quest-list-container" id="questListContainer">
                     <p class="placeholder-text">Đang tải danh sách nhiệm vụ...</p>
                 </div>
 
-                <form id="addQuestForm" class="control-form" style="margin-top: 10px;">
-                    <label>Giao thêm nhiệm vụ mới:</label>
+                <form id="addQuestForm" class="control-form">
+                    <label class="form-label">Giao nhanh nhiệm vụ mẫu:</label>
                     <div class="quick-chips">
-                        <button type="button" class="chip" onclick="setQuickQuest('q_wash', 'Wash dishes', '0/1')">Rửa bát 🍽️</button>
-                        <button type="button" class="chip" onclick="setQuickQuest('q_clean', 'Clean bedroom', '0/1')">Dọn phòng 🧹</button>
-                        <button type="button" class="chip" onclick="setQuickQuest('q_water', 'Water plants', '0/1')">Tưới cây 🌿</button>
+                        <button type="button" class="chip" onclick="setQuickQuest('q_math', 'Học Toán 20 phút', '0/1')">📐 Học Toán</button>
+                        <button type="button" class="chip" onclick="setQuickQuest('q_read', 'Đọc sách 15 phút', '0/1')">📖 Đọc sách</button>
+                        <button type="button" class="chip" onclick="setQuickQuest('q_clean', 'Dọn góc học tập', '0/1')">🧹 Dọn phòng</button>
+                        <button type="button" class="chip" onclick="setQuickQuest('q_water', 'Tưới cây & Uống nước', '0/1')">🌱 Tưới cây</button>
                     </div>
-                    <div class="add-quest-inputs">
-                        <input type="text" id="questTitleInput" placeholder="Tên nhiệm vụ (VD: Đọc sách 15 phút)..." required>
-                        <input type="text" id="questProgInput" placeholder="Mục tiêu (VD: 0/1)..." value="0/1" style="width: 80px;">
+
+                    <div class="input-group">
+                        <input type="text" id="questTitleInput" placeholder="Nhập tên việc cần giao (VD: Ôn từ vựng tiếng Anh)..." required>
+                        <input type="text" id="questProgInput" placeholder="Số lần (0/1)" value="0/1" class="mini-input">
                     </div>
-                    <button type="submit" class="btn btn-emerald">
-                        <span>Giao Nhiệm Vụ Xuống Thiết Bị</span> ➕
+
+                    <button type="submit" class="btn btn-emerald" id="btnAddQuest">
+                        <span>Giao Việc Xuống Thiết Bị</span>
+                        <span class="btn-arrow">➔</span>
                     </button>
                 </form>
             </section>
+
+            <!-- Module 2: Heo Đất & Mục Tiêu Ước Mơ (Savings & Goals) -->
+            <section class="card glass-card savings-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="icon-wrap savings-icon">🐷</div>
+                        <div>
+                            <h2>Heo Đất Tiết Kiệm</h2>
+                            <p class="card-sub">Thưởng tiền & Mục tiêu ước mơ</p>
+                        </div>
+                    </div>
+                    <span class="badge badge-amber">Nuôi Heo Đất</span>
+                </div>
+
+                <div class="savings-summary">
+                    <div class="savings-amount-box">
+                        <span class="savings-label">Số Dư Heo Đất Của Con</span>
+                        <div class="amount-val" id="savingsCurrent">850,000đ</div>
+                        <div class="target-val" id="savingsTarget">Mục tiêu: 2,000,000đ</div>
+                    </div>
+                    
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="savingsProgressFill" style="width: 42.5%;"></div>
+                    </div>
+
+                    <div class="goal-info-row">
+                        <span class="goal-name-text" id="currentGoalName">🎯 Mục tiêu: Robot Thông Minh</span>
+                        <span class="goal-percent-text" id="currentGoalPercent">42.5%</span>
+                    </div>
+                </div>
+
+                <div class="control-form">
+                    <label class="form-label">Thưởng tiền khi con hoàn thành việc tốt:</label>
+                    <div class="quick-amounts">
+                        <button type="button" class="btn btn-reward" onclick="depositMoney(10000)">+10k 🪙</button>
+                        <button type="button" class="btn btn-reward" onclick="depositMoney(20000)">+20k 🪙</button>
+                        <button type="button" class="btn btn-reward" onclick="depositMoney(50000)">+50k 🪙</button>
+                        <button type="button" class="btn btn-reward" onclick="depositMoney(100000)">+100k ⭐</button>
+                    </div>
+
+                    <div class="custom-deposit-row">
+                        <input type="number" id="customDepositInput" placeholder="Số tiền thưởng khác (VNĐ)..." step="5000">
+                        <button type="button" class="btn btn-amber" onclick="depositCustomMoney()">Thưởng Heo</button>
+                    </div>
+
+                    <label class="form-label" style="margin-top: 14px;">Đổi mục tiêu ước mơ mới cho bé:</label>
+                    <div class="goal-change-row">
+                        <select id="goalSelect" class="custom-select">
+                            <option value="1" data-price="2000000">🤖 Robot Thông Minh (2,000,000đ)</option>
+                            <option value="0" data-price="3000000">🚲 Xe Đạp Mới (3,000,000đ)</option>
+                            <option value="2" data-price="1500000">🏰 Bộ Xếp Hình LEGO (1,500,000đ)</option>
+                            <option value="8" data-price="2500000">🔭 Kính Thiên Văn Mini (2,500,000đ)</option>
+                        </select>
+                        <button type="button" class="btn btn-outline" onclick="changeGoal()">Lưu Mục Tiêu</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 3: Hộp Thư Yêu Thương (Family Notes) -->
+            <section class="card glass-card family-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="icon-wrap family-icon">💌</div>
+                        <div>
+                            <h2>Hộp Thư Yêu Thương</h2>
+                            <p class="card-sub">Gửi tin nhắn tức thì lên màn hình bé</p>
+                        </div>
+                    </div>
+                    <span class="badge badge-pink">Thời Gian Thực</span>
+                </div>
+
+                <div class="current-preview" id="familyPreviewBox">
+                    <div class="preview-header-row">
+                        <div class="preview-role" id="currentSenderRole">👩 Mẹ nhắn con</div>
+                        <span class="heart-indicator" id="heartIndicator">🤍 Chưa thả tim</span>
+                    </div>
+                    <p class="preview-text" id="currentMessageText">Đang tải tin nhắn gần nhất...</p>
+                    <div class="preview-footer">
+                        <span id="currentMessageTime">Hôm nay</span>
+                    </div>
+                </div>
+
+                <form id="sendMessageForm" class="control-form">
+                    <label class="form-label">Người gửi:</label>
+                    <div class="role-selector">
+                        <label class="role-option">
+                            <input type="radio" name="senderRole" value="mom" checked>
+                            <span class="role-chip">👩 Mẹ</span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="senderRole" value="dad">
+                            <span class="role-chip">👨 Bố</span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="senderRole" value="family">
+                            <span class="role-chip">🏡 Cả Nhà</span>
+                        </label>
+                    </div>
+
+                    <label class="form-label" for="messageInput">Soạn lời nhắn:</label>
+                    <textarea id="messageInput" rows="2" placeholder="Nhập lời khen ngợi, nhắc nhở hoặc yêu thương gửi tới con..."></textarea>
+                    
+                    <div class="quick-chips">
+                        <button type="button" class="chip" onclick="setQuickMsg('Mẹ yêu con rất nhiều! Cố gắng học chăm nhé!')">Mẹ yêu con ❤️</button>
+                        <button type="button" class="chip" onclick="setQuickMsg('Bố rất tự hào vì con đã hoàn thành bài tập xuất sắc!')">Bố tự hào ⭐</button>
+                        <button type="button" class="chip" onclick="setQuickMsg('Cuối tuần này cả nhà mình cùng đi ăn kem nhé!')">Đi ăn kem 🍦</button>
+                    </div>
+
+                    <button type="submit" class="btn btn-pink" id="btnSendMsg">
+                        <span>Gửi Lời Nhắn Tức Thì</span>
+                        <span class="btn-arrow">➔</span>
+                    </button>
+                </form>
+            </section>
+
         </main>
 
-        <!-- Live MQTT Event Stream Console -->
+        <!-- Live Activity Stream Footer -->
         <footer class="live-console-card glass-card">
             <div class="console-header">
                 <div class="console-title">
                     <span class="pulse-indicator"></span>
-                    <h3>Live Event Stream (Phản Hồi Trực Tiếp Từ ESP32-S3)</h3>
+                    <h3>Nhật Ký Tương Tác & Phản Hồi Từ ESP32</h3>
                 </div>
                 <button class="btn-clear-logs" onclick="clearLogs()">Xóa log</button>
             </div>
             <div class="console-body" id="consoleLogs">
-                <div class="log-line info">[System] Đang kết nối luồng sự kiện SSE từ Backend Server...</div>
+                <div class="log-line info">[Hệ thống] Đang kết nối luồng sự kiện trực tiếp từ Buddy Cloud...</div>
             </div>
         </footer>
     </div>

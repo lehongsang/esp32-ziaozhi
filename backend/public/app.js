@@ -110,7 +110,7 @@ document.getElementById('sendMessageForm').addEventListener('submit', async (e) 
         if (data.success) {
             renderFamilyMessage(data.message);
             document.getElementById('messageInput').value = '';
-            log(`[Màn 5] Đã gửi tin nhắn tới thiết bị: "${msg}"`, 'pink');
+            log(`[Hộp Thư] Đã gửi tin nhắn tới thiết bị: "${msg}"`, 'pink');
         }
     } catch (err) {
         log('Lỗi gửi tin nhắn: ' + err.message, 'amber');
@@ -132,7 +132,7 @@ async function depositMoney(amount) {
         const data = await res.json();
         if (data.success) {
             renderSavings(data.savings);
-            log(`[Màn 4] Đã thưởng +${formatVND(amount)} vào Heo Đất!`, 'amber');
+            log(`[Heo Đất] Đã thưởng +${formatVND(amount)} vào Heo Đất!`, 'amber');
         }
     } catch (err) {
         log('Lỗi nạp tiền: ' + err.message, 'amber');
@@ -164,7 +164,7 @@ async function changeGoal() {
         const data = await res.json();
         if (data.success) {
             renderSavings(data.savings);
-            log(`[Màn 4] Đã đổi mục tiêu tiết kiệm thành: ${goalName} (${formatVND(targetAmount)})`, 'amber');
+            log(`[Heo Đất] Đã đổi mục tiêu tiết kiệm thành: ${goalName} (${formatVND(targetAmount)})`, 'amber');
         }
     } catch (err) {
         log('Lỗi đổi mục tiêu: ' + err.message, 'amber');
@@ -178,7 +178,7 @@ async function toggleQuest(questId) {
         const data = await res.json();
         if (data.success) {
             renderQuests(data.quests);
-            log(`[Màn 2] Đã cập nhật trạng thái nhiệm vụ ${questId}`, 'success');
+            log(`[Nhiệm Vụ] Đã cập nhật trạng thái nhiệm vụ`, 'success');
         }
     } catch (err) {
         log('Lỗi cập nhật nhiệm vụ: ' + err.message, 'amber');
@@ -202,7 +202,7 @@ document.getElementById('addQuestForm').addEventListener('submit', async (e) => 
         if (data.success) {
             renderQuests(data.quests);
             document.getElementById('questTitleInput').value = '';
-            log(`[Màn 2] Đã giao nhiệm vụ mới: "${title}"`, 'success');
+            log(`[Nhiệm Vụ] Đã giao nhiệm vụ mới: "${title}"`, 'success');
         }
     } catch (err) {
         log('Lỗi giao nhiệm vụ: ' + err.message, 'amber');
