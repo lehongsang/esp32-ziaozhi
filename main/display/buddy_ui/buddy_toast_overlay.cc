@@ -1,6 +1,7 @@
 #include "buddy_toast_overlay.h"
 #include "buddy_font_helper.h"
 #include "application.h"
+#include "assets/lang_config.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 
