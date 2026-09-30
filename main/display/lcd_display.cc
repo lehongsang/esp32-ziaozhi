@@ -1083,13 +1083,27 @@ void LcdDisplay::SetPreviewImage(std::unique_ptr<LvglImage> image) {
     ESP_ERROR_CHECK(esp_timer_start_once(preview_timer_, PREVIEW_IMAGE_DURATION_MS * 1000));
 }
 
+void LcdDisplay::SetStatus(const char* status) {
+    if (!status) return;
+    DisplayLockGuard lock(this);
+    auto& tutor = BuddyScreenManager::GetInstance().GetTutorScreen();
+    if (strcmp(status, Lang::Strings::LISTENING) == 0) {
+        tutor.SetListeningState(true);
+    } else if (strcmp(status, Lang::Strings::SPEAKING) == 0) {
+        tutor.SetSpeakingState(true);
+    } else if (strcmp(status, Lang::Strings::STANDBY) == 0 || strcmp(status, Lang::Strings::IDLE) == 0) {
+        tutor.SetIdleState();
+    }
+}
+
 void LcdDisplay::SetChatMessage(const char* role, const char* content) {
     ESP_LOGI(TAG, "ChatMessage [%s]: %s", role ? role : "", content ? content : "");
     if (content != nullptr && strlen(content) > 0 && role != nullptr) {
-        // Only forward assistant/user voice transcripts to AiTutorScreen
-        if (strcmp(role, "assistant") == 0 || strcmp(role, "user") == 0) {
-            DisplayLockGuard lock(this);
-            BuddyScreenManager::GetInstance().GetTutorScreen().SetSpeechText(content);
+        DisplayLockGuard lock(this);
+        if (strcmp(role, "user") == 0) {
+            BuddyScreenManager::GetInstance().GetTutorScreen().SetUserMessage(content);
+        } else if (strcmp(role, "assistant") == 0) {
+            BuddyScreenManager::GetInstance().GetTutorScreen().SetAssistantMessage(content);
         }
     }
 }

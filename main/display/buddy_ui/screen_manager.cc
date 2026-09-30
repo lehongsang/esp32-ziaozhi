@@ -239,8 +239,18 @@ void BuddyScreenManager::TileviewScrollCb(lv_event_t* e) {
     for (int i = 0; i < static_cast<int>(BuddyScreenId::kScreenCount); ++i) {
         if (self->tiles_[i] == active_tile) {
             if (self->current_screen_ != static_cast<BuddyScreenId>(i)) {
+                BuddyScreenId prev_screen = self->current_screen_;
                 self->current_screen_ = static_cast<BuddyScreenId>(i);
                 self->UpdateIndicators(i);
+
+                // If leaving AI Tutor screen, stop listening to avoid continuous listening
+                if (prev_screen == BuddyScreenId::kScreenTutor) {
+                    auto dev_state = Application::GetInstance().GetDeviceState();
+                    if (dev_state == kDeviceStateListening || dev_state == kDeviceStateSpeaking) {
+                        Application::GetInstance().ToggleChatState();
+                    }
+                }
+
                 if (self->on_screen_changed_) {
                     self->on_screen_changed_(self->current_screen_);
                 }

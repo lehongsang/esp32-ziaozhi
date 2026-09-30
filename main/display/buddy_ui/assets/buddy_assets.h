@@ -22,6 +22,7 @@ extern const lv_image_dsc_t buddy_piggy_happy;
 extern const lv_image_dsc_t buddy_food_corn;
 extern const lv_image_dsc_t buddy_food_potato;
 extern const lv_image_dsc_t buddy_food_carrot;
+extern const lv_image_dsc_t buddy_robot_avatar;
 
 #ifdef __cplusplus
 }

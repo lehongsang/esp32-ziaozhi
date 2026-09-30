@@ -4,131 +4,250 @@
 #include "buddy_toast_overlay.h"
 #include "board.h"
 #include "application.h"
+#include "assets/lang_config.h"
 
 #include <esp_log.h>
 #include <material_symbols.h>
+#include <cmath>
 
 #define TAG "AiTutorScreen"
 
 LV_FONT_DECLARE(font_material_symbols_20_4);
+LV_FONT_DECLARE(font_material_symbols_30_4);
 
 AiTutorScreen::AiTutorScreen() {}
-AiTutorScreen::~AiTutorScreen() {}
+AiTutorScreen::~AiTutorScreen() {
+    if (waveform_timer_) {
+        lv_timer_delete(waveform_timer_);
+        waveform_timer_ = nullptr;
+    }
+}
 
 void AiTutorScreen::Create(lv_obj_t* parent) {
-    // 1. Root Container
+    // 1. Root Container (Deep Pure Black Theme matching Mockup)
     container_ = lv_obj_create(parent);
     lv_obj_remove_style_all(container_);
     lv_obj_set_size(container_, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(container_, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, 0);
     lv_obj_clear_flag(container_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 2. 3D Robot AI Background (320x240 RGB565)
-    bg_img_ = lv_image_create(container_);
-    lv_image_set_src(bg_img_, &buddy_bg_tutor);
-    lv_obj_set_size(bg_img_, 320, 240);
-    lv_obj_align(bg_img_, LV_ALIGN_TOP_LEFT, 0, 0);
+    // 2. Top Row: 3D Robot Avatar (Left) & User Speech Bubble (Right)
+    // 2.1 3D Robot Avatar (Pos: 12, 10, Size: 56x56)
+    robot_avatar_img_ = lv_image_create(container_);
+    lv_image_set_src(robot_avatar_img_, &buddy_robot_avatar);
+    lv_obj_set_size(robot_avatar_img_, 56, 56);
+    lv_obj_set_pos(robot_avatar_img_, 12, 10);
+    lv_obj_set_style_radius(robot_avatar_img_, 14, 0);
+    lv_obj_set_style_shadow_width(robot_avatar_img_, 12, 0);
+    lv_obj_set_style_shadow_color(robot_avatar_img_, lv_color_hex(0x38BDF8), 0); // Subtle Cyan Glow
+    lv_obj_set_style_shadow_opa(robot_avatar_img_, LV_OPA_40, 0);
 
-    // 3. Top Status HUD Bar - Centered Title Pill
-    header_pill_ = lv_obj_create(container_);
-    lv_obj_remove_style_all(header_pill_);
-    lv_obj_set_size(header_pill_, 116, 24);
-    lv_obj_align(header_pill_, LV_ALIGN_TOP_MID, 0, 6);
-    lv_obj_set_style_bg_color(header_pill_, lv_color_hex(0x0A0E1A), 0);
-    lv_obj_set_style_bg_opa(header_pill_, LV_OPA_60, 0);
-    lv_obj_set_style_radius(header_pill_, 12, 0);
-    lv_obj_set_style_border_color(header_pill_, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_border_opa(header_pill_, LV_OPA_20, 0);
-    lv_obj_set_style_border_width(header_pill_, 1, 0);
-    lv_obj_set_flex_flow(header_pill_, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(header_pill_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(header_pill_, LV_OBJ_FLAG_SCROLLABLE);
+    // 2.2 User Speech Bubble (Pos: 76, 10, Size: 232x56, Vibrant Royal Blue)
+    user_bubble_ = lv_obj_create(container_);
+    lv_obj_remove_style_all(user_bubble_);
+    lv_obj_set_size(user_bubble_, 232, 56);
+    lv_obj_set_pos(user_bubble_, 76, 10);
+    lv_obj_set_style_bg_color(user_bubble_, lv_color_hex(0x2563EB), 0); // Vibrant Blue #2563EB
+    lv_obj_set_style_bg_opa(user_bubble_, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(user_bubble_, 16, 0);
+    lv_obj_set_style_pad_hor(user_bubble_, 12, 0);
+    lv_obj_set_style_pad_ver(user_bubble_, 6, 0);
+    lv_obj_set_flex_flow(user_bubble_, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(user_bubble_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_clear_flag(user_bubble_, LV_OBJ_FLAG_SCROLLABLE);
 
-    title_label_ = lv_label_create(header_pill_);
-    lv_obj_set_style_text_font(title_label_, GetBuddyFont(), 0);
-    lv_label_set_text(title_label_, "Gia sư AI");
-    lv_obj_set_style_text_color(title_label_, lv_color_hex(0xFFFFFF), 0);
+    user_label_ = lv_label_create(user_bubble_);
+    lv_obj_set_style_text_font(user_label_, GetBuddyFont(), 0);
+    lv_obj_set_width(user_label_, 208);
+    lv_label_set_long_mode(user_label_, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(user_label_, "Buddy ơi,\nngày mai mình học gì?");
+    lv_obj_set_style_text_color(user_label_, lv_color_hex(0xFFFFFF), 0);
 
-    // 4. Interactive Floating Speech Text Area (Centered inside the Cloud Thought Bubble)
-    speech_bubble_ = lv_obj_create(container_);
-    lv_obj_remove_style_all(speech_bubble_);
-    lv_obj_set_size(speech_bubble_, 152, 84);
-    lv_obj_set_pos(speech_bubble_, 12, 42);
-    lv_obj_set_style_bg_opa(speech_bubble_, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(speech_bubble_, 0, 0);
-    lv_obj_set_style_pad_all(speech_bubble_, 4, 0);
-    lv_obj_set_flex_flow(speech_bubble_, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(speech_bubble_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(speech_bubble_, LV_OBJ_FLAG_SCROLLABLE);
+    // 3. Middle Row: AI Response Bubble (Pos: 12, 74, Size: 296x78, Pure Crisp White)
+    assistant_bubble_ = lv_obj_create(container_);
+    lv_obj_remove_style_all(assistant_bubble_);
+    lv_obj_set_size(assistant_bubble_, 296, 78);
+    lv_obj_set_pos(assistant_bubble_, 12, 74);
+    lv_obj_set_style_bg_color(assistant_bubble_, lv_color_hex(0xFFFFFF), 0); // Clean White #FFFFFF
+    lv_obj_set_style_bg_opa(assistant_bubble_, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(assistant_bubble_, 18, 0);
+    lv_obj_set_style_shadow_width(assistant_bubble_, 10, 0);
+    lv_obj_set_style_shadow_color(assistant_bubble_, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_shadow_opa(assistant_bubble_, LV_OPA_40, 0);
+    lv_obj_set_style_pad_hor(assistant_bubble_, 14, 0);
+    lv_obj_set_style_pad_ver(assistant_bubble_, 8, 0);
+    lv_obj_set_flex_flow(assistant_bubble_, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(assistant_bubble_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_clear_flag(assistant_bubble_, LV_OBJ_FLAG_SCROLLABLE);
 
-    speech_label_ = lv_label_create(speech_bubble_);
-    lv_obj_set_style_text_font(speech_label_, GetBuddyFont(), 0);
-    lv_obj_set_width(speech_label_, 144);
-    lv_label_set_long_mode(speech_label_, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(speech_label_, lv_color_hex(0x1E293B), 0);
-    lv_obj_set_style_text_align(speech_label_, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(speech_label_, "Chào con! Hôm nay con\ncần Buddy giúp gì nào?");
+    assistant_label_ = lv_label_create(assistant_bubble_);
+    lv_obj_set_style_text_font(assistant_label_, GetBuddyFont(), 0);
+    lv_obj_set_width(assistant_label_, 268);
+    lv_label_set_long_mode(assistant_label_, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(assistant_label_, "Ngày mai con có\nToán, Tiếng Việt\nvà Mỹ thuật.");
+    lv_obj_set_style_text_color(assistant_label_, lv_color_hex(0x0F172A), 0); // Bold dark navy text
 
-    // 5. Bottom 3 Interactive Action Buttons (Vector Material Symbols)
-    lv_obj_t* btn_bar = lv_obj_create(container_);
-    lv_obj_remove_style_all(btn_bar);
-    lv_obj_set_size(btn_bar, 158, 52);
-    lv_obj_set_pos(btn_bar, 8, 172);
-    lv_obj_set_flex_flow(btn_bar, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(btn_bar, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(btn_bar, LV_OBJ_FLAG_SCROLLABLE);
+    // 4. Bottom Action Section (Pos: 12, 156, Size: 296x52)
+    // 4.1 Audio Waveform Container (Glowing Cyan Waveform Bars)
+    waveform_container_ = lv_obj_create(container_);
+    lv_obj_remove_style_all(waveform_container_);
+    lv_obj_set_size(waveform_container_, 226, 48);
+    lv_obj_set_pos(waveform_container_, 12, 158);
+    lv_obj_set_flex_flow(waveform_container_, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(waveform_container_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(waveform_container_, 5, 0);
+    lv_obj_clear_flag(waveform_container_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 5.1 Microphone Button (Purple Circular)
-    btn_mic_ = lv_btn_create(btn_bar);
-    lv_obj_set_size(btn_mic_, 44, 44);
+    const int kNumBars = 16;
+    waveform_bars_.clear();
+    for (int i = 0; i < kNumBars; ++i) {
+        lv_obj_t* bar = lv_obj_create(waveform_container_);
+        lv_obj_remove_style_all(bar);
+        lv_obj_set_size(bar, 4, 10);
+        lv_obj_set_style_radius(bar, 2, 0);
+        lv_obj_set_style_bg_color(bar, lv_color_hex(0x38BDF8), 0); // Glowing Cyan #38BDF8
+        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+        waveform_bars_.push_back(bar);
+    }
+
+    // 4.2 Floating Round White Mic Button (Pos: 252, 156, Size: 52x52)
+    btn_mic_ = lv_btn_create(container_);
+    lv_obj_remove_style_all(btn_mic_);
+    lv_obj_set_size(btn_mic_, 52, 52);
+    lv_obj_set_pos(btn_mic_, 252, 156);
     lv_obj_set_style_radius(btn_mic_, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(btn_mic_, lv_color_hex(0x7B2CBF), 0);
+    lv_obj_set_style_bg_color(btn_mic_, lv_color_hex(0xFFFFFF), 0); // Crisp White Button
     lv_obj_set_style_bg_opa(btn_mic_, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0xC77DFF), 0);
+    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0xE2E8F0), 0);
     lv_obj_set_style_border_width(btn_mic_, 2, 0);
+    lv_obj_set_style_shadow_width(btn_mic_, 14, 0);
+    lv_obj_set_style_shadow_color(btn_mic_, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_shadow_opa(btn_mic_, LV_OPA_50, 0);
     lv_obj_add_event_cb(btn_mic_, OnMicBtnCb, LV_EVENT_CLICKED, this);
 
-    lv_obj_t* mic_icon = lv_label_create(btn_mic_);
-    lv_label_set_text(mic_icon, MATERIAL_SYMBOLS_MIC);
-    lv_obj_set_style_text_font(mic_icon, &font_material_symbols_20_4, 0);
-    lv_obj_set_style_text_color(mic_icon, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(mic_icon);
+    mic_icon_ = lv_label_create(btn_mic_);
+    lv_label_set_text(mic_icon_, MATERIAL_SYMBOLS_MIC);
+    lv_obj_set_style_text_font(mic_icon_, &font_material_symbols_30_4, 0);
+    lv_obj_set_style_text_color(mic_icon_, lv_color_hex(0x10B981), 0); // Emerald Green Microphone
+    lv_obj_center(mic_icon_);
 
-    // 5.2 Camera Button (Emerald Green Circular)
-    btn_cam_ = lv_btn_create(btn_bar);
-    lv_obj_set_size(btn_cam_, 44, 44);
-    lv_obj_set_style_radius(btn_cam_, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(btn_cam_, lv_color_hex(0x06D6A0), 0);
-    lv_obj_set_style_bg_opa(btn_cam_, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(btn_cam_, lv_color_hex(0x70E000), 0);
-    lv_obj_set_style_border_width(btn_cam_, 2, 0);
-    lv_obj_add_event_cb(btn_cam_, OnCamBtnCb, LV_EVENT_CLICKED, this);
+    // 5. Bottom Status Footer Label (Pos: 12, 214, Width: 296)
+    status_label_ = lv_label_create(container_);
+    lv_obj_set_style_text_font(status_label_, GetBuddyFont(), 0);
+    lv_obj_set_size(status_label_, 296, 20);
+    lv_obj_set_pos(status_label_, 12, 214);
+    lv_obj_set_style_text_align(status_label_, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(status_label_, "Luôn sẵn sàng khi con cần");
+    lv_obj_set_style_text_color(status_label_, lv_color_hex(0x94A3B8), 0);
 
-    lv_obj_t* cam_icon = lv_label_create(btn_cam_);
-    lv_label_set_text(cam_icon, MATERIAL_SYMBOLS_PHOTO_CAMERA);
-    lv_obj_set_style_text_font(cam_icon, &font_material_symbols_20_4, 0);
-    lv_obj_set_style_text_color(cam_icon, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(cam_icon);
+    // 6. Start Waveform Animation Timer (Updates dynamic equalizer effect)
+    StartWaveformAnimation();
 
-    // 5.3 Quiz / Keyboard Button (Amber Orange Circular)
-    btn_quiz_ = lv_btn_create(btn_bar);
-    lv_obj_set_size(btn_quiz_, 44, 44);
-    lv_obj_set_style_radius(btn_quiz_, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(btn_quiz_, lv_color_hex(0xFFB703), 0);
-    lv_obj_set_style_bg_opa(btn_quiz_, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(btn_quiz_, lv_color_hex(0xFFD166), 0);
-    lv_obj_set_style_border_width(btn_quiz_, 2, 0);
-    lv_obj_add_event_cb(btn_quiz_, OnQuizBtnCb, LV_EVENT_CLICKED, this);
-
-    lv_obj_t* quiz_icon = lv_label_create(btn_quiz_);
-    lv_label_set_text(quiz_icon, MATERIAL_SYMBOLS_EDIT_SQUARE);
-    lv_obj_set_style_text_font(quiz_icon, &font_material_symbols_20_4, 0);
-    lv_obj_set_style_text_color(quiz_icon, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_center(quiz_icon);
-
-    ESP_LOGI(TAG, "AiTutorScreen created with Vietnamese typography and vector action buttons");
+    ESP_LOGI(TAG, "AiTutorScreen created with 3D Robot Avatar, real-time speech bubbles and dynamic equalizer");
 }
 
-#include "assets/lang_config.h"
+void AiTutorScreen::SetUserMessage(const std::string& text) {
+    if (user_label_ && !text.empty()) {
+        lv_label_set_text(user_label_, text.c_str());
+    }
+}
+
+void AiTutorScreen::SetAssistantMessage(const std::string& text) {
+    if (assistant_label_ && !text.empty()) {
+        lv_label_set_text(assistant_label_, text.c_str());
+    }
+}
+
+void AiTutorScreen::SetSpeechText(const std::string& text) {
+    // Fallback updates assistant message
+    SetAssistantMessage(text);
+}
+
+void AiTutorScreen::SetListeningState(bool listening) {
+    is_listening_ = listening;
+    is_speaking_ = false;
+
+    if (mic_icon_) {
+        lv_obj_set_style_text_color(mic_icon_, listening ? lv_color_hex(0xEF4444) : lv_color_hex(0x10B981), 0);
+    }
+    if (status_label_) {
+        lv_label_set_text(status_label_, listening ? "Đang lắng nghe con nói..." : "Luôn sẵn sàng khi con cần");
+        lv_obj_set_style_text_color(status_label_, listening ? lv_color_hex(0x38BDF8) : lv_color_hex(0x94A3B8), 0);
+    }
+}
+
+void AiTutorScreen::SetSpeakingState(bool speaking) {
+    is_speaking_ = speaking;
+    is_listening_ = false;
+
+    if (mic_icon_) {
+        lv_obj_set_style_text_color(mic_icon_, lv_color_hex(0x3B82F6), 0);
+    }
+    if (status_label_) {
+        lv_label_set_text(status_label_, speaking ? "Buddy đang trả lời..." : "Luôn sẵn sàng khi con cần");
+        lv_obj_set_style_text_color(status_label_, speaking ? lv_color_hex(0x34D399) : lv_color_hex(0x94A3B8), 0);
+    }
+}
+
+void AiTutorScreen::SetIdleState() {
+    is_listening_ = false;
+    is_speaking_ = false;
+
+    if (mic_icon_) {
+        lv_obj_set_style_text_color(mic_icon_, lv_color_hex(0x10B981), 0);
+    }
+    if (status_label_) {
+        lv_label_set_text(status_label_, "Luôn sẵn sàng khi con cần");
+        lv_obj_set_style_text_color(status_label_, lv_color_hex(0x94A3B8), 0);
+    }
+}
+
+void AiTutorScreen::StartWaveformAnimation() {
+    if (!waveform_timer_) {
+        waveform_timer_ = lv_timer_create(WaveformTimerCb, 80, this);
+    }
+}
+
+void AiTutorScreen::StopWaveformAnimation() {
+    if (waveform_timer_) {
+        lv_timer_delete(waveform_timer_);
+        waveform_timer_ = nullptr;
+    }
+}
+
+void AiTutorScreen::WaveformTimerCb(lv_timer_t* timer) {
+    auto* self = static_cast<AiTutorScreen*>(lv_timer_get_user_data(timer));
+    if (!self || self->waveform_bars_.empty()) return;
+
+    self->anim_step_ = (self->anim_step_ + 1) % 360;
+    float phase = self->anim_step_ * 0.2f;
+
+    for (size_t i = 0; i < self->waveform_bars_.size(); ++i) {
+        lv_obj_t* bar = self->waveform_bars_[i];
+        if (!bar) continue;
+
+        int32_t height = 8;
+        if (self->is_listening_) {
+            // Dynamic energetic wave when listening
+            float wave = std::sin(phase + i * 0.45f) * 0.5f + 0.5f;
+            float wave2 = std::cos(phase * 0.7f + i * 0.3f) * 0.5f + 0.5f;
+            height = 8 + static_cast<int32_t>((wave * 0.6f + wave2 * 0.4f) * 28);
+            lv_obj_set_style_bg_color(bar, lv_color_hex(0x38BDF8), 0); // Vibrant Cyan
+        } else if (self->is_speaking_) {
+            // Rhythmic pulse when speaking
+            float wave = std::sin(phase * 1.2f + i * 0.5f) * 0.5f + 0.5f;
+            height = 8 + static_cast<int32_t>(wave * 24);
+            lv_obj_set_style_bg_color(bar, lv_color_hex(0x34D399), 0); // Emerald Cyan
+        } else {
+            // Gentle resting wave when idle
+            float wave = std::sin(phase * 0.3f + i * 0.3f) * 0.5f + 0.5f;
+            height = 6 + static_cast<int32_t>(wave * 10);
+            lv_obj_set_style_bg_color(bar, lv_color_hex(0x0284C7), 0); // Muted Sky Blue
+        }
+        lv_obj_set_height(bar, height);
+    }
+}
 
 void AiTutorScreen::OnMicBtnCb(lv_event_t* e) {
     auto* self = static_cast<AiTutorScreen*>(lv_event_get_user_data(e));
@@ -141,8 +260,7 @@ void AiTutorScreen::OnMicBtnCb(lv_event_t* e) {
         return;
     }
 
-    // Play offline Vietnamese greeting/prompt voice & start voice chat
-    Application::GetInstance().PlaySound(Lang::Sounds::OGG_WELCOME);
+    // Toggle Chat State (Start listening or stop chatting)
     Application::GetInstance().ToggleChatState();
 
     if (self->on_mic_click_) {
@@ -150,89 +268,6 @@ void AiTutorScreen::OnMicBtnCb(lv_event_t* e) {
     }
 }
 
-void AiTutorScreen::OnCamBtnCb(lv_event_t* e) {
-    auto* self = static_cast<AiTutorScreen*>(lv_event_get_user_data(e));
-    if (self) {
-        if (self->speech_label_) {
-            lv_label_set_text(self->speech_label_, "Chức năng Camera\nđang được cập nhật!");
-        }
-        BuddyToastOverlay::GetInstance().Show("Tính năng Camera", "Đang được hoàn thiện...", ToastType::kInfo, 2500);
-        if (self->on_cam_click_) {
-            self->on_cam_click_();
-        }
-    }
-}
-
-void AiTutorScreen::OnQuizBtnCb(lv_event_t* e) {
-    auto* self = static_cast<AiTutorScreen*>(lv_event_get_user_data(e));
-    if (self) {
-        if (self->speech_label_) {
-            lv_label_set_text(self->speech_label_, "Chế độ Luyện tập\nđang được cập nhật!");
-        }
-        BuddyToastOverlay::GetInstance().Show("Chế độ Luyện tập", "Đang được phát triển...", ToastType::kInfo, 2500);
-        if (self->on_quiz_click_) {
-            self->on_quiz_click_();
-        }
-    }
-}
-
-void AiTutorScreen::SetSpeechText(const std::string& text) {
-    if (speech_label_) {
-        lv_label_set_text(speech_label_, text.c_str());
-    }
-}
-
-void AiTutorScreen::SetListeningState(bool listening) {
-    is_listening_ = listening;
-    if (!btn_mic_) return;
-
-    if (listening) {
-        StartListeningPulse();
-        if (speech_label_) {
-            lv_label_set_text(speech_label_, "Đang lắng nghe con nói...");
-        }
-    } else {
-        StopListeningPulse();
-    }
-}
-
-void AiTutorScreen::StartListeningPulse() {
-    if (!btn_mic_) return;
-    lv_obj_set_style_bg_color(btn_mic_, lv_color_hex(0xE11D48), 0); // Rose red
-    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0xFDA4AF), 0);
-    lv_obj_set_style_shadow_width(btn_mic_, 14, 0);
-    lv_obj_set_style_shadow_color(btn_mic_, lv_color_hex(0xE11D48), 0);
-    lv_obj_set_style_shadow_opa(btn_mic_, LV_OPA_80, 0);
-
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, btn_mic_);
-    lv_anim_set_values(&a, 6, 16);
-    lv_anim_set_duration(&a, 600);
-    lv_anim_set_playback_duration(&a, 600);
-    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_set_exec_cb(&a, [](void* var, int32_t v) {
-        lv_obj_set_style_shadow_width((lv_obj_t*)var, v, 0);
-    });
-    lv_anim_start(&a);
-}
-
-void AiTutorScreen::StopListeningPulse() {
-    if (!btn_mic_) return;
-    lv_anim_delete(btn_mic_, nullptr);
-    lv_obj_set_style_bg_color(btn_mic_, lv_color_hex(0x7B2CBF), 0); // Royal purple
-    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0xC77DFF), 0);
-    lv_obj_set_style_shadow_width(btn_mic_, 0, 0);
-}
-
 void AiTutorScreen::OnMicClicked(std::function<void()> callback) {
     on_mic_click_ = callback;
-}
-
-void AiTutorScreen::OnCamClicked(std::function<void()> callback) {
-    on_cam_click_ = callback;
-}
-
-void AiTutorScreen::OnQuizClicked(std::function<void()> callback) {
-    on_quiz_click_ = callback;
 }
