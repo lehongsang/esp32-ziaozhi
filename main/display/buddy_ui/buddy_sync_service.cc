@@ -198,7 +198,7 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
             }
 
             BuddyReminderScheduler::GetInstance().UpdateQuests(quests);
-            std::string toast_title = "Nhiệm vụ mới! ⭐";
+            std::string toast_title = "Nhiệm vụ mới";
             std::string toast_body = quests.empty() ? "Đã cập nhật việc hôm nay" : ("Bố mẹ vừa giao: " + quests.back().title);
             BuddyToastOverlay::GetInstance().Show(toast_title, toast_body, ToastType::kNewQuest, 4500);
         });
@@ -227,7 +227,7 @@ void BuddySyncService::HandleSavingsPayload(cJSON* root) {
             if (savings_screen_) {
                 savings_screen_->SetGoal(goal_type, goal_name, current_amount, target_amount, currency);
             }
-            BuddyToastOverlay::GetInstance().Show("Heo Đất Tiết Kiệm! 🐷", "Mục tiêu: " + goal_name, ToastType::kReward, 4000);
+            BuddyToastOverlay::GetInstance().Show("Heo Đất Tiết Kiệm", "Mục tiêu: " + goal_name, ToastType::kReward, 4000);
         });
     }
 }

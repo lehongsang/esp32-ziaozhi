@@ -1,5 +1,6 @@
 #include "today_quest_screen.h"
 #include "buddy_sync_service.h"
+#include "buddy_font_helper.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 
@@ -31,6 +32,7 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_obj_clear_flag(header_progress_card_, LV_OBJ_FLAG_SCROLLABLE);
 
     progress_ratio_label_ = lv_label_create(header_progress_card_);
+    lv_obj_set_style_text_font(progress_ratio_label_, GetBuddyFont(), 0);
     lv_label_set_text(progress_ratio_label_, "2/3");
     lv_obj_set_style_text_color(progress_ratio_label_, lv_color_hex(0xFFFFFF), 0);
 
@@ -78,6 +80,7 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_obj_clear_flag(footer_card_, LV_OBJ_FLAG_SCROLLABLE);
 
     footer_label_ = lv_label_create(footer_card_);
+    lv_obj_set_style_text_font(footer_label_, GetBuddyFont(), 0);
     lv_label_set_text(footer_label_, "Còn 1 việc nữa là\ntrọn vẹn hôm nay!");
     lv_obj_set_style_text_color(footer_label_, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_align(footer_label_, LV_TEXT_ALIGN_CENTER, 0);
@@ -226,6 +229,7 @@ void TodayQuestScreen::RenderItem(const QuestItemData& item, size_t index) {
 
     // 2. Title Text (Bold Dark Navy text, No hours text!)
     lv_obj_t* title = lv_label_create(card);
+    lv_obj_set_style_text_font(title, GetBuddyFont(), 0);
     lv_label_set_text(title, item.title.c_str());
     lv_obj_set_style_text_color(title, lv_color_hex(0x0A0F1D), 0); // High contrast dark navy text on pastel
     lv_obj_set_flex_grow(title, 1);
