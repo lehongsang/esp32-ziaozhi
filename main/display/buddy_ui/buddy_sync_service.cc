@@ -1,5 +1,8 @@
 #include "buddy_sync_service.h"
 #include <esp_log.h>
+#include <esp_sntp.h>
+#include <sys/time.h>
+#include <time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "application.h"
@@ -27,12 +30,31 @@ BuddySyncService::~BuddySyncService() {
     Stop();
 }
 
+void BuddySyncService::InitSntp() {
+    ESP_LOGI(TAG, "Configuring SNTP & Timezone (ICT / UTC+7)...");
+    setenv("TZ", "ICT-7", 1);
+    tzset();
+
+    if (!esp_sntp_enabled()) {
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "pool.ntp.org");
+        esp_sntp_setservername(1, "asia.pool.ntp.org");
+        esp_sntp_setservername(2, "time.google.com");
+        esp_sntp_setservername(3, "time.windows.com");
+        esp_sntp_init();
+    }
+}
+
 void BuddySyncService::Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen) {
     std::lock_guard<std::mutex> lock(mutex_);
     home_screen_ = home_screen;
     quest_screen_ = quest_screen;
     savings_screen_ = savings_screen;
     family_screen_ = family_screen;
+
+    // Set POSIX Timezone early (does not touch lwIP TCP/IP stack)
+    setenv("TZ", "ICT-7", 1);
+    tzset();
 
     // Start Reminder Scheduler
     BuddyReminderScheduler::GetInstance().Initialize();
@@ -71,6 +93,8 @@ void BuddySyncService::ConnectMqtt() {
         return;
     }
 
+    InitSntp();
+
     if (!mqtt_) {
         mqtt_ = network->CreateMqtt(1);
         if (!mqtt_) {
@@ -88,13 +112,18 @@ void BuddySyncService::ConnectMqtt() {
             mqtt_->Subscribe(prefix + "quests/set", 0);
             mqtt_->Subscribe(prefix + "savings/set", 0);
             mqtt_->Subscribe(prefix + "family/message", 0);
+            mqtt_->Subscribe(prefix + "time/set", 0);
 
             // Also subscribe to wildcard default
             if (device_id_ != "default") {
                 mqtt_->Subscribe("buddy/default/quests/set", 0);
                 mqtt_->Subscribe("buddy/default/savings/set", 0);
                 mqtt_->Subscribe("buddy/default/family/message", 0);
+                mqtt_->Subscribe("buddy/default/time/set", 0);
             }
+
+            // Request current real time from server
+            mqtt_->Publish(prefix + "time/get", "{}", 0);
 
             // Send initial online status
             SendHeartbeat(100, 2, 350);
@@ -120,6 +149,40 @@ void BuddySyncService::ConnectMqtt() {
     }
 }
 
+void BuddySyncService::HandleTimePayload(cJSON* root) {
+    if (!root) return;
+    cJSON* ts_item = cJSON_GetObjectItem(root, "timestamp");
+    if (cJSON_IsNumber(ts_item)) {
+        double ts = ts_item->valuedouble;
+        if (ts < 10000000000.0) {
+            ts *= 1000.0;
+        }
+
+        setenv("TZ", "ICT-7", 1);
+        tzset();
+
+        struct timeval tv;
+        tv.tv_sec = (time_t)(ts / 1000.0);
+        tv.tv_usec = (suseconds_t)((long long)ts % 1000) * 1000;
+        settimeofday(&tv, NULL);
+
+        time_t now = time(NULL);
+        struct tm* tm_info = localtime(&now);
+        char buf[64];
+        if (tm_info) {
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);
+            ESP_LOGI(TAG, "⏰ System Time synchronized from server: %s", buf);
+        }
+
+        BuddyReminderScheduler::GetInstance().CheckReminders();
+
+        auto display = Board::GetInstance().GetDisplay();
+        if (display) {
+            display->UpdateStatusBar(true);
+        }
+    }
+}
+
 void BuddySyncService::HandleIncomingMqtt(const std::string& topic, const std::string& payload) {
     ESP_LOGI(TAG, "Incoming MQTT [%s]: %s", topic.c_str(), payload.c_str());
 
@@ -129,7 +192,9 @@ void BuddySyncService::HandleIncomingMqtt(const std::string& topic, const std::s
         return;
     }
 
-    if (topic.find("/quests/set") != std::string::npos || cJSON_GetObjectItem(root, "quests") != nullptr || cJSON_IsArray(root)) {
+    if (topic.find("/time/set") != std::string::npos || (cJSON_GetObjectItem(root, "timestamp") != nullptr && cJSON_GetObjectItem(root, "quests") == nullptr && cJSON_GetObjectItem(root, "message") == nullptr)) {
+        HandleTimePayload(root);
+    } else if (topic.find("/quests/set") != std::string::npos || cJSON_GetObjectItem(root, "quests") != nullptr || cJSON_IsArray(root)) {
         HandleQuestsPayload(root);
     } else if (topic.find("/savings/set") != std::string::npos || cJSON_GetObjectItem(root, "savings") != nullptr || cJSON_GetObjectItem(root, "target_amount") != nullptr) {
         HandleSavingsPayload(root);

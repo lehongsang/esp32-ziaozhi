@@ -54,7 +54,7 @@ void BuddyReminderScheduler::SchedulerTask(void* arg) {
 void BuddyReminderScheduler::CheckReminders() {
     time_t now = time(nullptr);
     struct tm* tm_info = localtime(&now);
-    if (!tm_info) return;
+    if (!tm_info || tm_info->tm_year < (2025 - 1900)) return;
 
     int current_day = tm_info->tm_yday;
     if (current_day != last_checked_day_) {

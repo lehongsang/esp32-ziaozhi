@@ -42,6 +42,8 @@ private:
     void HandleQuestsPayload(cJSON* root);
     void HandleSavingsPayload(cJSON* root);
     void HandleFamilyMessagePayload(cJSON* root);
+    void HandleTimePayload(cJSON* root);
+    void InitSntp();
 
     BuddyHomeScreen* home_screen_ = nullptr;
     TodayQuestScreen* quest_screen_ = nullptr;

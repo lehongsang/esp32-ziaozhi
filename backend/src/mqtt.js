@@ -41,6 +41,11 @@ function attachWebSocketServer(httpServer) {
 aedes.on('client', (client) => {
     console.log(`🔌 [MQTT] Client connected: ${client ? client.id : 'unknown'}`);
     broadcastEvent('device_connected', { clientId: client.id, timestamp: Date.now() });
+
+    if (client && client.id) {
+        const devId = client.id.replace('buddy_', '');
+        publishToDevice(devId, 'time/set', { timestamp: Date.now(), timezone_offset: 420 });
+    }
 });
 
 aedes.on('clientDisconnect', (client) => {
@@ -64,7 +69,11 @@ aedes.on('publish', (packet, client) => {
             const deviceId = parts[1];
             const channel = parts[2];
 
-            if (channel === 'quests' && parts[3] === 'completed') {
+            if (channel === 'time') {
+                // Device requested real time sync
+                publishToDevice(deviceId, 'time/set', { timestamp: Date.now(), timezone_offset: 420 });
+                console.log(`⏰ Synchronized real time to device ${deviceId}: ${new Date().toLocaleString('vi-VN')}`);
+            } else if (channel === 'quests' && parts[3] === 'completed') {
                 // Quest Completed by child
                 const questId = payload.quest_id;
                 db.run(`UPDATE quests SET completed = 1, progress_text = '' WHERE id = ? AND device_id = ?`,
@@ -98,6 +107,9 @@ aedes.on('publish', (packet, client) => {
                 db.run(`UPDATE devices SET battery = ?, level = ?, xp = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?`,
                     [battery, level, xp, deviceId]);
                 broadcastEvent('device_status', { deviceId, battery, level, xp });
+
+                // Sync exact real time
+                publishToDevice(deviceId, 'time/set', { timestamp: Date.now(), timezone_offset: 420 });
 
                 // Auto hydrate full state to newly connected device
                 db.all(`SELECT id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed FROM quests WHERE device_id = ? ORDER BY id ASC`, [deviceId], (err, quests) => {
