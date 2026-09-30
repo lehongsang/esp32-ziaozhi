@@ -106,9 +106,6 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_radius(msg_card_, 18, 0);
     lv_obj_set_style_border_color(msg_card_, lv_color_hex(0xEC4899), 0); // Glowing Rose Pink Border
     lv_obj_set_style_border_width(msg_card_, 2, 0);
-    lv_obj_set_style_shadow_width(msg_card_, 12, 0);
-    lv_obj_set_style_shadow_color(msg_card_, lv_color_hex(0xEC4899), 0);
-    lv_obj_set_style_shadow_opa(msg_card_, LV_OPA_30, 0);
     lv_obj_set_flex_flow(msg_card_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(msg_card_, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_hor(msg_card_, 10, 0);
@@ -139,9 +136,6 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_radius(sender_badge_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(sender_badge_, lv_color_hex(0xEC4899), 0);
     lv_obj_set_style_bg_opa(sender_badge_, LV_OPA_COVER, 0);
-    lv_obj_set_style_shadow_width(sender_badge_, 6, 0);
-    lv_obj_set_style_shadow_color(sender_badge_, lv_color_hex(0xEC4899), 0);
-    lv_obj_set_style_shadow_opa(sender_badge_, LV_OPA_60, 0);
     lv_obj_clear_flag(sender_badge_, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* badge_heart = lv_label_create(sender_badge_);
@@ -229,18 +223,12 @@ void FamilyMomentScreen::UpdateLikeButtonState() {
         lv_obj_set_style_bg_color(btn_like_, lv_color_hex(0x059669), 0); // Emerald Green
         lv_obj_set_style_border_color(btn_like_, lv_color_hex(0x34D399), 0);
         lv_obj_set_style_border_width(btn_like_, 2, 0);
-        lv_obj_set_style_shadow_width(btn_like_, 10, 0);
-        lv_obj_set_style_shadow_color(btn_like_, lv_color_hex(0x059669), 0);
-        lv_obj_set_style_shadow_opa(btn_like_, LV_OPA_60, 0);
         lv_label_set_text(like_text_, "💖 Đã gửi ngàn trái tim!");
         lv_obj_set_style_text_color(like_text_, lv_color_hex(0xFFFFFF), 0);
     } else {
         lv_obj_set_style_bg_color(btn_like_, lv_color_hex(0xEC4899), 0); // Hot Pink
         lv_obj_set_style_border_color(btn_like_, lv_color_hex(0xF472B6), 0);
         lv_obj_set_style_border_width(btn_like_, 2, 0);
-        lv_obj_set_style_shadow_width(btn_like_, 12, 0);
-        lv_obj_set_style_shadow_color(btn_like_, lv_color_hex(0xEC4899), 0);
-        lv_obj_set_style_shadow_opa(btn_like_, LV_OPA_60, 0);
         lv_label_set_text(like_text_, "❤️ Thả tim cho Bố Mẹ");
         lv_obj_set_style_text_color(like_text_, lv_color_hex(0xFFFFFF), 0);
     }

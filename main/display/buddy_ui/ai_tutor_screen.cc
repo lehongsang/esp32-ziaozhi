@@ -39,9 +39,6 @@ void AiTutorScreen::Create(lv_obj_t* parent) {
     lv_obj_set_size(robot_avatar_img_, 52, 52);
     lv_obj_set_pos(robot_avatar_img_, 12, 6);
     lv_obj_set_style_radius(robot_avatar_img_, 14, 0);
-    lv_obj_set_style_shadow_width(robot_avatar_img_, 10, 0);
-    lv_obj_set_style_shadow_color(robot_avatar_img_, lv_color_hex(0x38BDF8), 0); // Subtle Cyan Glow
-    lv_obj_set_style_shadow_opa(robot_avatar_img_, LV_OPA_40, 0);
 
     // 2.2 User Speech Bubble (Pos: 70, 6, Size: 238x52, Vibrant Royal Blue)
     user_bubble_ = lv_obj_create(container_);
@@ -72,9 +69,6 @@ void AiTutorScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_bg_color(assistant_bubble_, lv_color_hex(0xFFFFFF), 0); // Clean White #FFFFFF
     lv_obj_set_style_bg_opa(assistant_bubble_, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(assistant_bubble_, 18, 0);
-    lv_obj_set_style_shadow_width(assistant_bubble_, 10, 0);
-    lv_obj_set_style_shadow_color(assistant_bubble_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(assistant_bubble_, LV_OPA_40, 0);
     lv_obj_set_style_pad_hor(assistant_bubble_, 14, 0);
     lv_obj_set_style_pad_ver(assistant_bubble_, 6, 0);
     lv_obj_set_flex_flow(assistant_bubble_, LV_FLEX_FLOW_COLUMN);
@@ -119,11 +113,8 @@ void AiTutorScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_radius(btn_mic_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(btn_mic_, lv_color_hex(0xFFFFFF), 0); // Crisp White Button
     lv_obj_set_style_bg_opa(btn_mic_, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0xE2E8F0), 0);
+    lv_obj_set_style_border_color(btn_mic_, lv_color_hex(0x10B981), 0);
     lv_obj_set_style_border_width(btn_mic_, 2, 0);
-    lv_obj_set_style_shadow_width(btn_mic_, 12, 0);
-    lv_obj_set_style_shadow_color(btn_mic_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(btn_mic_, LV_OPA_50, 0);
     lv_obj_add_event_cb(btn_mic_, OnMicBtnCb, LV_EVENT_CLICKED, this);
 
     mic_icon_ = lv_label_create(btn_mic_);
@@ -139,7 +130,7 @@ void AiTutorScreen::Create(lv_obj_t* parent) {
     lv_obj_set_pos(status_label_, 12, 196);
     lv_obj_set_style_text_align(status_label_, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(status_label_, "Luôn sẵn sàng khi con cần");
-    lv_obj_set_style_text_color(status_label_, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_color(status_label_, lv_color_hex(0xF8FAFC), 0);
 
     // 6. Start Waveform Animation Timer (Updates dynamic equalizer effect)
     StartWaveformAnimation();
@@ -173,7 +164,7 @@ void AiTutorScreen::SetListeningState(bool listening) {
     }
     if (status_label_) {
         lv_label_set_text(status_label_, listening ? "Đang lắng nghe con nói..." : "Luôn sẵn sàng khi con cần");
-        lv_obj_set_style_text_color(status_label_, listening ? lv_color_hex(0x38BDF8) : lv_color_hex(0x94A3B8), 0);
+        lv_obj_set_style_text_color(status_label_, listening ? lv_color_hex(0x38BDF8) : lv_color_hex(0xF8FAFC), 0);
     }
 }
 
@@ -186,7 +177,7 @@ void AiTutorScreen::SetSpeakingState(bool speaking) {
     }
     if (status_label_) {
         lv_label_set_text(status_label_, speaking ? "Buddy đang trả lời..." : "Luôn sẵn sàng khi con cần");
-        lv_obj_set_style_text_color(status_label_, speaking ? lv_color_hex(0x34D399) : lv_color_hex(0x94A3B8), 0);
+        lv_obj_set_style_text_color(status_label_, speaking ? lv_color_hex(0x34D399) : lv_color_hex(0xF8FAFC), 0);
     }
 }
 
@@ -199,7 +190,7 @@ void AiTutorScreen::SetIdleState() {
     }
     if (status_label_) {
         lv_label_set_text(status_label_, "Luôn sẵn sàng khi con cần");
-        lv_obj_set_style_text_color(status_label_, lv_color_hex(0x94A3B8), 0);
+        lv_obj_set_style_text_color(status_label_, lv_color_hex(0xF8FAFC), 0);
     }
 }
 

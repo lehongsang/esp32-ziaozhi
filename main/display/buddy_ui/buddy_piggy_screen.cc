@@ -52,9 +52,6 @@ void BuddyPiggyScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_radius(speech_bubble_, 18, 0);
     lv_obj_set_style_border_color(speech_bubble_, lv_color_hex(0xF59E0B), 0);
     lv_obj_set_style_border_width(speech_bubble_, 2, 0);
-    lv_obj_set_style_shadow_width(speech_bubble_, 10, 0);
-    lv_obj_set_style_shadow_color(speech_bubble_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(speech_bubble_, LV_OPA_40, 0);
     lv_obj_set_style_pad_hor(speech_bubble_, 12, 0);
     lv_obj_set_style_pad_ver(speech_bubble_, 8, 0);
     lv_obj_set_flex_flow(speech_bubble_, LV_FLEX_FLOW_COLUMN);

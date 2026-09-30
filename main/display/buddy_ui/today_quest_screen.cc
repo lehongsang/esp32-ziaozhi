@@ -59,9 +59,8 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
     lv_obj_set_pos(quest_list_, 14, 38);
     lv_obj_set_style_radius(quest_list_, 20, 0);
     lv_obj_set_style_clip_corner(quest_list_, true, 0);
-    lv_obj_set_style_shadow_width(quest_list_, 14, 0);
-    lv_obj_set_style_shadow_color(quest_list_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(quest_list_, LV_OPA_60, 0);
+    lv_obj_set_style_border_color(quest_list_, lv_color_hex(0x334155), 0);
+    lv_obj_set_style_border_width(quest_list_, 1, 0);
     lv_obj_set_flex_flow(quest_list_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(quest_list_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(quest_list_, 0, 0);
@@ -249,21 +248,12 @@ void TodayQuestScreen::RenderItem(const QuestItemData& item, size_t index) {
 
     if (index == 0 || item.category == "math" || item.id.find("math") != std::string::npos) {
         lv_obj_set_style_bg_color(badge, lv_color_hex(0x2563EB), 0); // Vibrant Royal Blue
-        lv_obj_set_style_shadow_width(badge, 6, 0);
-        lv_obj_set_style_shadow_color(badge, lv_color_hex(0x2563EB), 0);
-        lv_obj_set_style_shadow_opa(badge, LV_OPA_40, 0);
         lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_CALCULATE);
     } else if (index == 1 || item.category == "read" || item.id.find("read") != std::string::npos) {
         lv_obj_set_style_bg_color(badge, lv_color_hex(0x16A34A), 0); // Vibrant Emerald Green
-        lv_obj_set_style_shadow_width(badge, 6, 0);
-        lv_obj_set_style_shadow_color(badge, lv_color_hex(0x16A34A), 0);
-        lv_obj_set_style_shadow_opa(badge, LV_OPA_40, 0);
         lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_EDIT_SQUARE);
     } else {
         lv_obj_set_style_bg_color(badge, lv_color_hex(0xEA580C), 0); // Vibrant Orange
-        lv_obj_set_style_shadow_width(badge, 6, 0);
-        lv_obj_set_style_shadow_color(badge, lv_color_hex(0xEA580C), 0);
-        lv_obj_set_style_shadow_opa(badge, LV_OPA_40, 0);
         lv_label_set_text(badge_icon, MATERIAL_SYMBOLS_CHECK);
     }
 

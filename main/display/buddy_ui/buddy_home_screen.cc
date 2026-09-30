@@ -32,9 +32,6 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_radius(avatar_box_, 22, 0);
     lv_obj_set_style_border_color(avatar_box_, lv_color_hex(0xF59E0B), 0); // Amber Gold Border
     lv_obj_set_style_border_width(avatar_box_, 2, 0);
-    lv_obj_set_style_shadow_width(avatar_box_, 12, 0);
-    lv_obj_set_style_shadow_color(avatar_box_, lv_color_hex(0xF59E0B), 0);
-    lv_obj_set_style_shadow_opa(avatar_box_, LV_OPA_40, 0);
     lv_obj_clear_flag(avatar_box_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(avatar_box_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(avatar_box_, OnAvatarTouchCb, LV_EVENT_CLICKED, this);
@@ -99,7 +96,7 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_set_flex_align(btn_container_, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(btn_container_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // 4.1 Nút 1: [XEM VIỆC] (Royal Blue Glow)
+    // 4.1 Nút 1: [XEM VIỆC] (Royal Blue Glow Border)
     btn_view_quests_ = lv_btn_create(btn_container_);
     lv_obj_remove_style_all(btn_view_quests_);
     lv_obj_set_size(btn_view_quests_, 98, 88);
@@ -107,9 +104,8 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(btn_view_quests_, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btn_view_quests_, lv_color_hex(0x1D4ED8), LV_STATE_PRESSED);
     lv_obj_set_style_radius(btn_view_quests_, 18, 0);
-    lv_obj_set_style_shadow_width(btn_view_quests_, 10, 0);
-    lv_obj_set_style_shadow_color(btn_view_quests_, lv_color_hex(0x2563EB), 0);
-    lv_obj_set_style_shadow_opa(btn_view_quests_, LV_OPA_40, 0);
+    lv_obj_set_style_border_color(btn_view_quests_, lv_color_hex(0x60A5FA), 0);
+    lv_obj_set_style_border_width(btn_view_quests_, 2, 0);
     lv_obj_set_flex_flow(btn_view_quests_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(btn_view_quests_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(btn_view_quests_, 4, 0);
@@ -126,7 +122,7 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(label_view, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_margin_top(label_view, 3, 0);
 
-    // 4.2 Nút 2: [BUDDY ƠI] (Emerald Green Glow)
+    // 4.2 Nút 2: [BUDDY ƠI] (Emerald Green Glow Border)
     btn_talk_buddy_ = lv_btn_create(btn_container_);
     lv_obj_remove_style_all(btn_talk_buddy_);
     lv_obj_set_size(btn_talk_buddy_, 98, 88);
@@ -134,9 +130,8 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(btn_talk_buddy_, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btn_talk_buddy_, lv_color_hex(0x15803D), LV_STATE_PRESSED);
     lv_obj_set_style_radius(btn_talk_buddy_, 18, 0);
-    lv_obj_set_style_shadow_width(btn_talk_buddy_, 10, 0);
-    lv_obj_set_style_shadow_color(btn_talk_buddy_, lv_color_hex(0x16A34A), 0);
-    lv_obj_set_style_shadow_opa(btn_talk_buddy_, LV_OPA_40, 0);
+    lv_obj_set_style_border_color(btn_talk_buddy_, lv_color_hex(0x4ADE80), 0);
+    lv_obj_set_style_border_width(btn_talk_buddy_, 2, 0);
     lv_obj_set_flex_flow(btn_talk_buddy_, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(btn_talk_buddy_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(btn_talk_buddy_, 4, 0);

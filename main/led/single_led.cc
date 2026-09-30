@@ -26,7 +26,12 @@ SingleLed::SingleLed(gpio_num_t gpio) {
     led_strip_rmt_config_t rmt_config = {};
     rmt_config.resolution_hz = 10 * 1000 * 1000; // 10MHz
 
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip_));
+    esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip_);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to create LED strip RMT device (err=%d). LED disabled.", err);
+        led_strip_ = nullptr;
+        return;
+    }
     led_strip_clear(led_strip_);
 
     esp_timer_create_args_t blink_timer_args = {
@@ -39,7 +44,11 @@ SingleLed::SingleLed(gpio_num_t gpio) {
         .name = "blink_timer",
         .skip_unhandled_events = false,
     };
-    ESP_ERROR_CHECK(esp_timer_create(&blink_timer_args, &blink_timer_));
+    err = esp_timer_create(&blink_timer_args, &blink_timer_);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to create LED blink timer (err=%d)", err);
+        blink_timer_ = nullptr;
+    }
 }
 
 SingleLed::~SingleLed() {
@@ -64,7 +73,9 @@ void SingleLed::TurnOn() {
     }
     
     std::lock_guard<std::mutex> lock(mutex_);
-    esp_timer_stop(blink_timer_);
+    if (blink_timer_ != nullptr) {
+        esp_timer_stop(blink_timer_);
+    }
     led_strip_set_pixel(led_strip_, 0, r_, g_, b_);
     led_strip_refresh(led_strip_);
 }
@@ -75,7 +86,9 @@ void SingleLed::TurnOff() {
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
-    esp_timer_stop(blink_timer_);
+    if (blink_timer_ != nullptr) {
+        esp_timer_stop(blink_timer_);
+    }
     led_strip_clear(led_strip_);
 }
 
@@ -92,7 +105,7 @@ void SingleLed::StartContinuousBlink(int interval_ms) {
 }
 
 void SingleLed::StartBlinkTask(int times, int interval_ms) {
-    if (led_strip_ == nullptr) {
+    if (led_strip_ == nullptr || blink_timer_ == nullptr) {
         return;
     }
 

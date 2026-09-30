@@ -38,9 +38,6 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
     lv_obj_set_style_radius(container_, 16, 0);
     lv_obj_set_style_border_color(container_, lv_color_hex(0x0284C7), 0); // Ocean Blue Border
     lv_obj_set_style_border_width(container_, 2, 0);
-    lv_obj_set_style_shadow_width(container_, 16, 0);
-    lv_obj_set_style_shadow_color(container_, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_shadow_opa(container_, LV_OPA_60, 0);
     lv_obj_set_style_pad_hor(container_, 12, 0);
     lv_obj_set_style_pad_ver(container_, 8, 0);
     lv_obj_set_flex_flow(container_, LV_FLEX_FLOW_ROW);
