@@ -1,5 +1,6 @@
 #include "buddy_toast_overlay.h"
 #include "buddy_font_helper.h"
+#include "application.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 
@@ -22,14 +23,14 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 
     container_ = lv_obj_create(root_layer);
     lv_obj_remove_style_all(container_);
-    lv_obj_set_size(container_, 296, 52);
+    lv_obj_set_size(container_, 296, 54);
     lv_obj_align(container_, LV_ALIGN_TOP_MID, 0, -60); // Hidden offscreen initially
-    lv_obj_set_style_bg_color(container_, lv_color_hex(0x0F172A), 0);
-    lv_obj_set_style_bg_opa(container_, LV_OPA_90, 0);
+    lv_obj_set_style_bg_color(container_, lv_color_hex(0xE0F2FE), 0); // Vibrant Light Sky Blue #E0F2FE
+    lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, 0); // Solid opaque
     lv_obj_set_style_radius(container_, 16, 0);
-    lv_obj_set_style_border_color(container_, lv_color_hex(0x38BDF8), 0);
-    lv_obj_set_style_border_width(container_, 1, 0);
-    lv_obj_set_style_shadow_width(container_, 12, 0);
+    lv_obj_set_style_border_color(container_, lv_color_hex(0x0284C7), 0); // Ocean Blue Border
+    lv_obj_set_style_border_width(container_, 2, 0);
+    lv_obj_set_style_shadow_width(container_, 16, 0);
     lv_obj_set_style_shadow_color(container_, lv_color_hex(0x000000), 0);
     lv_obj_set_style_shadow_opa(container_, LV_OPA_60, 0);
     lv_obj_set_style_pad_hor(container_, 10, 0);
@@ -46,6 +47,7 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
     lv_obj_set_size(icon_box, 36, 36);
     lv_obj_set_style_radius(icon_box, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(icon_box, lv_color_hex(0x0284C7), 0);
+    lv_obj_set_style_bg_opa(icon_box, LV_OPA_COVER, 0);
     lv_obj_clear_flag(icon_box, LV_OBJ_FLAG_SCROLLABLE);
 
     icon_label_ = lv_label_create(icon_box);
@@ -60,25 +62,29 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
     lv_obj_set_flex_flow(text_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(text_col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_flex_grow(text_col, 1);
+    lv_obj_set_style_pad_gap(text_col, 1, 0);
     lv_obj_clear_flag(text_col, LV_OBJ_FLAG_SCROLLABLE);
 
     title_label_ = lv_label_create(text_col);
     lv_obj_set_style_text_font(title_label_, GetBuddyFont(), 0);
     lv_label_set_text(title_label_, "Tin nhắn mới");
-    lv_obj_set_style_text_color(title_label_, lv_color_hex(0x38BDF8), 0);
+    lv_obj_set_style_text_color(title_label_, lv_color_hex(0x0369A1), 0); // High contrast dark blue title
 
     body_label_ = lv_label_create(text_col);
     lv_obj_set_style_text_font(body_label_, GetBuddyFont(), 0);
-    lv_obj_set_width(body_label_, 220);
+    lv_obj_set_width(body_label_, 226);
     lv_label_set_long_mode(body_label_, LV_LABEL_LONG_DOT);
     lv_label_set_text(body_label_, "Nội dung tin nhắn");
-    lv_obj_set_style_text_color(body_label_, lv_color_hex(0xF8FAFC), 0);
+    lv_obj_set_style_text_color(body_label_, lv_color_hex(0x0F172A), 0); // Bold dark navy text for max readability
 
-    ESP_LOGI(TAG, "BuddyToastOverlay initialized");
+    ESP_LOGI(TAG, "BuddyToastOverlay initialized with vibrant Light Sky Blue theme");
 }
 
 void BuddyToastOverlay::Show(const std::string& title, const std::string& body, ToastType type, uint32_t duration_ms) {
     if (!container_) return;
+
+    // Play pleasant popup audio chime
+    Application::GetInstance().PlaySound(Lang::Sounds::OGG_POPUP);
 
     lv_obj_move_foreground(container_);
     lv_obj_clear_flag(container_, LV_OBJ_FLAG_HIDDEN);
@@ -86,33 +92,46 @@ void BuddyToastOverlay::Show(const std::string& title, const std::string& body, 
     if (title_label_) lv_label_set_text(title_label_, title.c_str());
     if (body_label_) lv_label_set_text(body_label_, body.c_str());
 
-    if (icon_label_) {
-        switch (type) {
-            case ToastType::kMessage:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_CHAT_BUBBLE);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0xEC4899), 0); // Pink
-                break;
-            case ToastType::kNewQuest:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_EDIT_SQUARE);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0x38BDF8), 0); // Blue
-                break;
-            case ToastType::kReminder:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_ALARM);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0xF59E0B), 0); // Amber
-                break;
-            case ToastType::kReward:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_STAR);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0xFACC15), 0); // Yellow
-                break;
-            case ToastType::kWarning:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_WARNING);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0xEF4444), 0); // Red
-                break;
-            case ToastType::kInfo:
-                lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_INFO);
-                lv_obj_set_style_border_color(container_, lv_color_hex(0x38BDF8), 0); // Cyan
-                break;
-        }
+    lv_obj_t* icon_box = lv_obj_get_parent(icon_label_);
+
+    switch (type) {
+        case ToastType::kMessage:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_CHAT_BUBBLE);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0xEC4899), 0); // Pink
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0xDB2777), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0xBE185D), 0);
+            break;
+        case ToastType::kNewQuest:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_STAR);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0x0284C7), 0); // Ocean Blue
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0x0284C7), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0x0369A1), 0);
+            break;
+        case ToastType::kReminder:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_ALARM);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0xF59E0B), 0); // Amber
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0xD97706), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0xB45309), 0);
+            break;
+        case ToastType::kReward:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_STAR);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0xF59E0B), 0); // Golden Amber
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0xD97706), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0xB45309), 0);
+            break;
+        case ToastType::kWarning:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_WARNING);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0xEF4444), 0); // Red
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0xDC2626), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0xB91C1C), 0);
+            break;
+        case ToastType::kInfo:
+        default:
+            if (icon_label_) lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_INFO);
+            lv_obj_set_style_border_color(container_, lv_color_hex(0x0284C7), 0); // Ocean Blue
+            if (icon_box) lv_obj_set_style_bg_color(icon_box, lv_color_hex(0x0284C7), 0);
+            if (title_label_) lv_obj_set_style_text_color(title_label_, lv_color_hex(0x0369A1), 0);
+            break;
     }
 
     // Slide down animation
