@@ -150,10 +150,10 @@ void TodayQuestScreen::UpdateSummaryHeader() {
     if (footer_label_) {
         int remaining = total - completed;
         if (remaining == 0) {
-            lv_label_set_text(footer_label_, "Tuyet voi!\nDa xong het viec hom nay!");
+            lv_label_set_text(footer_label_, "Tuyệt vời!\nĐã xong hết việc hôm nay!");
             lv_obj_set_style_text_color(footer_label_, lv_color_hex(0x4ADE80), 0);
         } else {
-            std::string text = "Con " + std::to_string(remaining) + " viec nua la\ntron ven hom nay!";
+            std::string text = "Còn " + std::to_string(remaining) + " việc nữa là\ntrọn vẹn hôm nay!";
             lv_label_set_text(footer_label_, text.c_str());
             lv_obj_set_style_text_color(footer_label_, lv_color_hex(0xFFFFFF), 0);
         }
