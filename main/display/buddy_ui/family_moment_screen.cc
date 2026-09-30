@@ -1,4 +1,5 @@
 #include "family_moment_screen.h"
+#include "buddy_font_helper.h"
 #include <esp_log.h>
 
 #define TAG "FamilyMomentScreen"
@@ -31,7 +32,8 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_clear_flag(header_pill_, LV_OBJ_FLAG_SCROLLABLE);
 
     title_label_ = lv_label_create(header_pill_);
-    lv_label_set_text(title_label_, "Family Moment");
+    lv_obj_set_style_text_font(title_label_, GetBuddyFont(), 0);
+    lv_label_set_text(title_label_, "Gia Đình Yêu Thương");
     lv_obj_set_style_text_color(title_label_, lv_color_hex(0xFFFFFF), 0);
 
     // 3. View: Placeholder / Empty Card (When no message received)
@@ -64,12 +66,14 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_center(mail_ico);
 
     lv_obj_t* empty_title = lv_label_create(placeholder_card_);
-    lv_label_set_text(empty_title, "No Messages Yet");
+    lv_obj_set_style_text_font(empty_title, GetBuddyFont(), 0);
+    lv_label_set_text(empty_title, "Chưa có lời nhắn mới");
     lv_obj_set_style_text_color(empty_title, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_margin_top(empty_title, 6, 0);
 
     lv_obj_t* empty_sub = lv_label_create(placeholder_card_);
-    lv_label_set_text(empty_sub, "Loving notes from Mom & Dad\nwill appear here");
+    lv_obj_set_style_text_font(empty_sub, GetBuddyFont(), 0);
+    lv_label_set_text(empty_sub, "Lời nhắn yêu thương từ Bố Mẹ\nsẽ xuất hiện ở đây");
     lv_obj_set_style_text_color(empty_sub, lv_color_hex(0x94A3B8), 0);
     lv_obj_set_style_text_align(empty_sub, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_margin_top(empty_sub, 4, 0);
@@ -115,15 +119,22 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_pad_bottom(sender_badge_, 2, 0);
 
     sender_label_ = lv_label_create(sender_badge_);
-    lv_label_set_text(sender_label_, (sender_name_ == "Mom" ? "Mom" : (sender_name_ == "Dad" ? "Dad" : sender_name_.c_str())));
+    lv_obj_set_style_text_font(sender_label_, GetBuddyFont(), 0);
+    std::string initial_sender = sender_name_;
+    if (sender_name_ == "Mom") initial_sender = "Mẹ";
+    else if (sender_name_ == "Dad") initial_sender = "Bố";
+    else if (sender_name_ == "Family") initial_sender = "Gia đình";
+    lv_label_set_text(sender_label_, initial_sender.c_str());
     lv_obj_set_style_text_color(sender_label_, lv_color_hex(0xFDE047), 0);
 
     time_label_ = lv_label_create(sender_row);
+    lv_obj_set_style_text_font(time_label_, GetBuddyFont(), 0);
     lv_label_set_text(time_label_, timestamp_.c_str());
     lv_obj_set_style_text_color(time_label_, lv_color_hex(0x94A3B8), 0);
 
     // 4.2 Message Body Box
     msg_label_ = lv_label_create(msg_card_);
+    lv_obj_set_style_text_font(msg_label_, GetBuddyFont(), 0);
     lv_label_set_long_mode(msg_label_, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(msg_label_, 246);
     lv_label_set_text(msg_label_, message_body_.c_str());
@@ -145,6 +156,7 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_pad_gap(like_row, 4, 0);
 
     like_text_ = lv_label_create(like_row);
+    lv_obj_set_style_text_font(like_text_, GetBuddyFont(), 0);
     lv_obj_center(like_text_);
 
     UpdateLikeButtonState();
@@ -167,14 +179,14 @@ void FamilyMomentScreen::UpdateLikeButtonState() {
         lv_obj_set_style_border_color(btn_like_, lv_color_hex(0xFFFFFF), 0);
         lv_obj_set_style_border_opa(btn_like_, LV_OPA_40, 0);
         lv_obj_set_style_border_width(btn_like_, 1, 0);
-        lv_label_set_text(like_text_, "Loved!");
+        lv_label_set_text(like_text_, "Đã thích ❤️");
         lv_obj_set_style_text_color(like_text_, lv_color_hex(0xFFFFFF), 0);
     } else {
         lv_obj_set_style_bg_color(btn_like_, lv_color_hex(0x2A1535), 0);
         lv_obj_set_style_border_color(btn_like_, lv_color_hex(0xEC4899), 0);
         lv_obj_set_style_border_opa(btn_like_, LV_OPA_60, 0);
         lv_obj_set_style_border_width(btn_like_, 1, 0);
-        lv_label_set_text(like_text_, "Send Love");
+        lv_label_set_text(like_text_, "Thả tim ❤️");
         lv_obj_set_style_text_color(like_text_, lv_color_hex(0xF472B6), 0);
     }
 }
@@ -200,12 +212,19 @@ void FamilyMomentScreen::SetMessage(const std::string& sender, const std::string
     is_liked_ = false;
 
     if (sender_label_) {
-        lv_label_set_text(sender_label_, (sender == "Mom" ? "Mom" : (sender == "Dad" ? "Dad" : sender.c_str())));
+        std::string display_sender = sender;
+        if (sender == "Mom") display_sender = "Mẹ";
+        else if (sender == "Dad") display_sender = "Bố";
+        else if (sender == "Family") display_sender = "Gia đình";
+        lv_obj_set_style_text_font(sender_label_, GetBuddyFont(), 0);
+        lv_label_set_text(sender_label_, display_sender.c_str());
     }
     if (msg_label_) {
+        lv_obj_set_style_text_font(msg_label_, GetBuddyFont(), 0);
         lv_label_set_text(msg_label_, message.c_str());
     }
     if (time_label_) {
+        lv_obj_set_style_text_font(time_label_, GetBuddyFont(), 0);
         lv_label_set_text(time_label_, timestamp.c_str());
     }
 
@@ -226,5 +245,6 @@ void FamilyMomentScreen::ClearMessage() {
 void FamilyMomentScreen::OnLikeClicked(std::function<void(bool liked)> callback) {
     on_like_click_ = callback;
 }
+
 
 

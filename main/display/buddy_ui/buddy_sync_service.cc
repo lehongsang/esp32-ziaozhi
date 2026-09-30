@@ -246,11 +246,14 @@ void BuddySyncService::HandleFamilyMessagePayload(cJSON* root) {
     cJSON* msg_item = cJSON_GetObjectItem(root, "message");
     cJSON* time_item = cJSON_GetObjectItem(root, "timestamp");
 
-    std::string sender = (sender_item && cJSON_IsString(sender_item)) ? sender_item->valuestring : "Mom";
+    std::string sender = (sender_item && cJSON_IsString(sender_item)) ? sender_item->valuestring : "Mẹ";
     std::string message = (msg_item && cJSON_IsString(msg_item)) ? msg_item->valuestring : "";
-    std::string timestamp = (time_item && cJSON_IsString(time_item)) ? time_item->valuestring : "Hôm nay";
+    std::string timestamp = "Hôm nay";
+    if (time_item && cJSON_IsString(time_item)) {
+        timestamp = time_item->valuestring;
+    }
 
-    if (family_screen_) {
+    if (family_screen_ && !message.empty()) {
         Application::GetInstance().Schedule([this, sender, message, timestamp]() {
             auto display = Board::GetInstance().GetDisplay();
             DisplayLockGuard lock(display);
@@ -258,7 +261,12 @@ void BuddySyncService::HandleFamilyMessagePayload(cJSON* root) {
             if (family_screen_) {
                 family_screen_->SetMessage(sender, message, timestamp);
             }
-            BuddyToastOverlay::GetInstance().Show("Tin nhắn từ " + sender, message, ToastType::kMessage, 5000);
+            std::string display_sender = sender;
+            if (sender == "Mom") display_sender = "Mẹ";
+            else if (sender == "Dad") display_sender = "Bố";
+            else if (sender == "Family") display_sender = "Gia đình";
+
+            BuddyToastOverlay::GetInstance().Show("Lời nhắn từ " + display_sender, message, ToastType::kMessage, 5000);
         });
     }
 }
