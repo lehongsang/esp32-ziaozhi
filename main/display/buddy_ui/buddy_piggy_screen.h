@@ -12,6 +12,7 @@ public:
 
     void Create(lv_obj_t* parent);
     void UpdateTime(const std::string& time_str);
+    void RefreshClock();
     void SetGreeting(const std::string& child_name);
     void SetSpeechText(const std::string& text);
     void SetBatteryLevel(int level, bool charging);
@@ -22,12 +23,14 @@ public:
 
 private:
     static void OnPiggyTouchCb(lv_event_t* e);
+    static void OnClockTimerCb(lv_timer_t* timer);
     void HandlePiggyTouch();
 
     lv_obj_t* container_ = nullptr;
     lv_obj_t* bg_img_ = nullptr;
     lv_obj_t* top_bar_ = nullptr;
     lv_obj_t* time_label_ = nullptr;
+    lv_timer_t* clock_timer_ = nullptr;
     lv_obj_t* wifi_label_ = nullptr;
     lv_obj_t* battery_label_ = nullptr;
 

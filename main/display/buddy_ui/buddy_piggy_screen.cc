@@ -3,12 +3,19 @@
 #include <material_symbols.h>
 #include <esp_log.h>
 
+#include <ctime>
+
 #define TAG "BuddyPiggyScreen"
 
 LV_FONT_DECLARE(font_material_symbols_20_4);
 
 BuddyPiggyScreen::BuddyPiggyScreen() {}
-BuddyPiggyScreen::~BuddyPiggyScreen() {}
+BuddyPiggyScreen::~BuddyPiggyScreen() {
+    if (clock_timer_) {
+        lv_timer_delete(clock_timer_);
+        clock_timer_ = nullptr;
+    }
+}
 
 void BuddyPiggyScreen::Create(lv_obj_t* parent) {
     // 1. Root Container
@@ -26,11 +33,14 @@ void BuddyPiggyScreen::Create(lv_obj_t* parent) {
     lv_obj_align(bg_img_, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_set_style_opa(bg_img_, LV_OPA_COVER, 0);
 
-    // 3. Top Clock (Centered, clean without wifi/battery)
+    // 3. Top Clock (Centered, clean real-time clock)
     time_label_ = lv_label_create(container_);
-    lv_label_set_text(time_label_, "16:30");
+    RefreshClock();
     lv_obj_align(time_label_, LV_ALIGN_TOP_MID, 0, 8);
     lv_obj_set_style_text_color(time_label_, lv_color_hex(0xFFFFFF), 0);
+
+    // Start 1-second tick timer for real-time clock display
+    clock_timer_ = lv_timer_create(OnClockTimerCb, 1000, this);
 
     // 4. Speech Bubble / Greeting Message Card (Yellow Theme, Placed at bottom / waist level)
     speech_bubble_ = lv_obj_create(container_);
@@ -78,6 +88,26 @@ void BuddyPiggyScreen::HandlePiggyTouch() {
             "Tớ luôn ở đây\nđồng hành cùng con mỗi ngày!"
         };
         lv_label_set_text(speech_label_, quotes[touch_count_ % 4]);
+    }
+}
+
+void BuddyPiggyScreen::OnClockTimerCb(lv_timer_t* timer) {
+    auto* self = static_cast<BuddyPiggyScreen*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->RefreshClock();
+    }
+}
+
+void BuddyPiggyScreen::RefreshClock() {
+    if (!time_label_) return;
+    time_t now = time(NULL);
+    struct tm* tm_info = localtime(&now);
+    if (tm_info && tm_info->tm_year >= (2025 - 1900)) {
+        char buf[16];
+        strftime(buf, sizeof(buf), "%H:%M", tm_info);
+        lv_label_set_text(time_label_, buf);
+    } else {
+        lv_label_set_text(time_label_, "--:--");
     }
 }
 
