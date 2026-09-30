@@ -55,10 +55,32 @@ aedes.on('clientDisconnect', (client) => {
 
 // Handle incoming messages from Device
 aedes.on('publish', (packet, client) => {
-    if (!client) return; // Ignore internal broker publishes
     const topic = packet.topic;
-    const payloadStr = packet.payload.toString('utf-8');
 
+    // Handle binary voice call audio packet from ESP32 -> Web Browser
+    if (topic.includes('/call/audio/up')) {
+        const parts = topic.split('/');
+        const deviceId = parts[1] || 'default';
+        const { sessions } = require('./call_relay');
+        let sess = (sessions && sessions.has(deviceId)) ? sessions.get(deviceId) : null;
+        if (!sess && sessions && sessions.has('default')) {
+            sess = sessions.get('default');
+        }
+        if (!sess && sessions) {
+            for (const s of sessions.values()) {
+                if (s.parentWs && s.parentWs.readyState === 1) {
+                    sess = s;
+                    break;
+                }
+            }
+        }
+        if (sess && sess.parentWs && sess.parentWs.readyState === 1) {
+            sess.parentWs.send(packet.payload, { binary: true });
+        }
+        return;
+    }
+
+    const payloadStr = packet.payload.toString('utf-8');
     console.log(`📥 [MQTT Device -> Server] [${topic}]:`, payloadStr);
 
     try {
@@ -107,9 +129,21 @@ aedes.on('publish', (packet, client) => {
                 broadcastEvent('call_signal', { deviceId, subAction, payload });
 
                 const { sessions } = require('./call_relay');
-                if (sessions && sessions.has(deviceId)) {
-                    const sess = sessions.get(deviceId);
-                    if (subAction === 'request' && sess.parentWs && sess.parentWs.readyState === 1) {
+                let sess = (sessions && sessions.has(deviceId)) ? sessions.get(deviceId) : null;
+                if (!sess && sessions && sessions.has('default')) {
+                    sess = sessions.get('default');
+                }
+                if (!sess && sessions) {
+                    for (const s of sessions.values()) {
+                        if (s.parentWs && s.parentWs.readyState === 1) {
+                            sess = s;
+                            break;
+                        }
+                    }
+                }
+
+                if (sess && sess.parentWs && sess.parentWs.readyState === 1) {
+                    if (subAction === 'request') {
                         sess.state = 'calling';
                         sess.caller = payload.caller || 'Bé Minh';
                         sess.parentWs.send(JSON.stringify({
@@ -118,11 +152,11 @@ aedes.on('publish', (packet, client) => {
                             from: 'device',
                             deviceId
                         }));
-                    } else if (subAction === 'accept' && sess.parentWs && sess.parentWs.readyState === 1) {
+                    } else if (subAction === 'accept') {
                         sess.state = 'active';
                         sess.startTime = Date.now();
                         sess.parentWs.send(JSON.stringify({ type: 'call_connected', deviceId, startTime: sess.startTime }));
-                    } else if ((subAction === 'reject' || subAction === 'end') && sess.parentWs && sess.parentWs.readyState === 1) {
+                    } else if (subAction === 'reject' || subAction === 'end') {
                         sess.state = 'idle';
                         sess.parentWs.send(JSON.stringify({ type: 'call_ended', deviceId, reason: payload.reason || 'Ended' }));
                     }

@@ -282,6 +282,19 @@ function connectSSE() {
             } else if (type === 'goal_changed') {
                 log(`🎯 Bé vừa đổi mục tiêu thành "${data.goal_name}" trên thiết bị!`, 'amber');
                 loadInitialState();
+            } else if (type === 'call_signal') {
+                const { subAction, payload } = data;
+                if (subAction === 'request' && callState === 'idle') {
+                    callState = 'incoming';
+                    showCallModal({
+                        title: `${payload.caller || 'Bé Minh'} đang gọi...`,
+                        status: 'Cuộc gọi đến từ thiết bị Buddy',
+                        mode: 'incoming'
+                    });
+                    log(`🔔 [Cuộc gọi] Bé đang gọi cho Bố/Mẹ từ thiết bị!`, 'pink');
+                } else if ((subAction === 'reject' || subAction === 'end') && callState !== 'idle') {
+                    endCallLocally('Cuộc gọi kết thúc');
+                }
             }
         } catch (e) {
             console.warn(e);

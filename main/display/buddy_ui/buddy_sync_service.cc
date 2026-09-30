@@ -130,7 +130,11 @@ void BuddySyncService::ConnectMqtt() {
             mqtt_->Subscribe(prefix + "savings/set", 0);
             mqtt_->Subscribe(prefix + "family/message", 0);
             mqtt_->Subscribe(prefix + "time/set", 0);
-            mqtt_->Subscribe(prefix + "call/#", 0);
+            mqtt_->Subscribe(prefix + "call/request", 0);
+            mqtt_->Subscribe(prefix + "call/accept", 0);
+            mqtt_->Subscribe(prefix + "call/reject", 0);
+            mqtt_->Subscribe(prefix + "call/end", 0);
+            mqtt_->Subscribe(prefix + "call/audio/down", 0);
 
             // Also subscribe to wildcard default
             if (device_id_ != "default") {
@@ -138,7 +142,11 @@ void BuddySyncService::ConnectMqtt() {
                 mqtt_->Subscribe("buddy/default/savings/set", 0);
                 mqtt_->Subscribe("buddy/default/family/message", 0);
                 mqtt_->Subscribe("buddy/default/time/set", 0);
-                mqtt_->Subscribe("buddy/default/call/#", 0);
+                mqtt_->Subscribe("buddy/default/call/request", 0);
+                mqtt_->Subscribe("buddy/default/call/accept", 0);
+                mqtt_->Subscribe("buddy/default/call/reject", 0);
+                mqtt_->Subscribe("buddy/default/call/end", 0);
+                mqtt_->Subscribe("buddy/default/call/audio/down", 0);
             }
 
             // Request current real time from server
@@ -203,6 +211,14 @@ void BuddySyncService::HandleTimePayload(cJSON* root) {
 }
 
 void BuddySyncService::HandleIncomingMqtt(const std::string& topic, const std::string& payload) {
+    if (topic.find("/call/audio/down") != std::string::npos) {
+        BuddyCallAudioService::GetInstance().HandleIncomingAudio(payload.data(), payload.size());
+        return;
+    }
+    if (topic.find("/call/audio/up") != std::string::npos) {
+        return;
+    }
+
     ESP_LOGI(TAG, "Incoming MQTT [%s]: %s", topic.c_str(), payload.c_str());
 
     cJSON* root = cJSON_Parse(payload.c_str());
@@ -447,24 +463,43 @@ void BuddySyncService::HandleCallPayload(const std::string& subaction, cJSON* ro
     ESP_LOGI(TAG, "📞 HandleCallPayload action: %s, caller: %s", type.c_str(), caller.c_str());
 
     if (type == "incoming_call" || type == "request") {
-        BuddyCallOverlay::GetInstance().ShowIncomingCall(
-            caller,
-            [this]() {
-                ESP_LOGI(TAG, "Call accepted by child on device");
-                AcceptCall();
-            },
-            [this]() {
-                ESP_LOGI(TAG, "Call rejected by child on device");
-                RejectCall();
-            }
-        );
+        Application::GetInstance().Schedule([this, caller]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+            BuddyCallOverlay::GetInstance().ShowIncomingCall(
+                caller,
+                [this]() {
+                    ESP_LOGI(TAG, "Call accepted by child on device");
+                    AcceptCall();
+                },
+                [this]() {
+                    ESP_LOGI(TAG, "Call rejected by child on device");
+                    RejectCall();
+                }
+            );
+        });
     } else if (type == "call_connected" || type == "accept") {
-        ESP_LOGI(TAG, "Call is now ACTIVE -> Starting Audio Pipeline");
-        BuddyCallOverlay::GetInstance().SetCallActive();
-        BuddyCallAudioService::GetInstance().StartCallAudio(broker_host_, broker_port_, device_id_);
+        ESP_LOGI(TAG, "Call is now ACTIVE -> Starting Audio-over-MQTT Pipeline");
+        Application::GetInstance().Schedule([]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+            BuddyCallOverlay::GetInstance().SetCallActive();
+        });
+        BuddyCallAudioService::GetInstance().StartCallAudio(
+            [this](const std::string& topic, const std::string& payload) {
+                if (mqtt_ && is_connected_) {
+                    mqtt_->Publish(topic, payload, 0);
+                }
+            },
+            device_id_
+        );
     } else if (type == "call_ended" || type == "reject" || type == "end") {
-        ESP_LOGI(TAG, "Call is ENDED -> Stopping Audio Pipeline");
-        BuddyCallOverlay::GetInstance().EndCall();
+        ESP_LOGI(TAG, "Call is ENDED -> Stopping Audio-over-MQTT Pipeline");
+        Application::GetInstance().Schedule([]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+            BuddyCallOverlay::GetInstance().EndCall();
+        });
         BuddyCallAudioService::GetInstance().StopCallAudio();
     }
 }
@@ -486,7 +521,14 @@ void BuddySyncService::StartCall() {
 }
 
 void BuddySyncService::AcceptCall() {
-    BuddyCallAudioService::GetInstance().StartCallAudio(broker_host_, broker_port_, device_id_);
+    BuddyCallAudioService::GetInstance().StartCallAudio(
+        [this](const std::string& topic, const std::string& payload) {
+            if (mqtt_ && is_connected_) {
+                mqtt_->Publish(topic, payload, 0);
+            }
+        },
+        device_id_
+    );
 
     if (!mqtt_ || !is_connected_) return;
 

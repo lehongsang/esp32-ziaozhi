@@ -66,9 +66,17 @@ function attachCallRelayServer(httpServer) {
             // 1. Binary Data -> Pure Audio Stream Relay (Ultra Low Latency)
             if (isBinary) {
                 if (session.state === 'active') {
-                    const target = (clientType === 'device') ? session.parentWs : session.deviceWs;
-                    if (target && target.readyState === ws.OPEN) {
-                        target.send(data, { binary: true });
+                    if (clientType === 'parent') {
+                        // Publish parent's audio to MQTT broker for the device to play
+                        const { aedes } = require('./mqtt');
+                        aedes.publish({
+                            topic: `buddy/${deviceId}/call/audio/down`,
+                            payload: data,
+                            qos: 0,
+                            retain: false
+                        });
+                    } else if (session.parentWs && session.parentWs.readyState === ws.OPEN) {
+                        session.parentWs.send(data, { binary: true });
                     }
                 }
                 return;

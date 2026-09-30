@@ -4,31 +4,31 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <string>
-#include <memory>
+#include <functional>
 #include <atomic>
-#include <web_socket.h>
 
 class BuddyCallAudioService {
 public:
     static BuddyCallAudioService& GetInstance();
 
-    void StartCallAudio(const std::string& host, int port, const std::string& device_id);
+    using SendCallback = std::function<void(const std::string& topic, const std::string& payload)>;
+
+    void StartCallAudio(SendCallback send_fn, const std::string& device_id);
     void StopCallAudio();
     bool IsInCall() const { return is_running_.load(); }
+    void HandleIncomingAudio(const char* data, size_t len);
 
 private:
     BuddyCallAudioService();
     ~BuddyCallAudioService();
 
     void MicTask();
-    void HandleIncomingAudio(const char* data, size_t len);
 
-    std::unique_ptr<WebSocket> websocket_;
+    SendCallback send_fn_;
     TaskHandle_t mic_task_handle_ = nullptr;
     std::atomic<bool> is_running_{false};
     std::string device_id_;
-    std::string host_;
-    int port_ = 0;
+    std::string up_topic_;
 };
 
 #endif // BUDDY_CALL_AUDIO_H

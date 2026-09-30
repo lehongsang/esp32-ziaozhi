@@ -19,71 +19,28 @@ BuddyCallAudioService::~BuddyCallAudioService() {
     StopCallAudio();
 }
 
-void BuddyCallAudioService::StartCallAudio(const std::string& host, int port, const std::string& device_id) {
+void BuddyCallAudioService::StartCallAudio(SendCallback send_fn, const std::string& device_id) {
     if (is_running_.load()) {
         ESP_LOGW(TAG, "Call Audio is already active");
         return;
     }
     is_running_.store(true);
-    host_ = host;
-    port_ = port;
+    send_fn_ = send_fn;
     device_id_ = device_id;
+    up_topic_ = "buddy/" + device_id_ + "/call/audio/up";
 
-    ESP_LOGI(TAG, "Starting Call Audio for device %s...", device_id_.c_str());
+    ESP_LOGI(TAG, "Starting Audio-over-MQTT for device %s (Topic: %s)...", device_id_.c_str(), up_topic_.c_str());
 
     // 1. Temporarily disable wake word detection and voice processing to prevent I2S conflict
     Application::GetInstance().GetAudioService().EnableWakeWordDetection(false);
     Application::GetInstance().GetAudioService().EnableVoiceProcessing(false);
 
-    // 2. Prepare WebSocket URL
-    std::string scheme = (port == 443) ? "wss://" : "ws://";
-    std::string url;
-    if (port == 80 || port == 443) {
-        url = scheme + host + "/call?type=device&deviceId=" + device_id;
-    } else {
-        url = scheme + host + ":" + std::to_string(port) + "/call?type=device&deviceId=" + device_id;
-    }
-
-    auto network = Board::GetInstance().GetNetwork();
-    if (!network) {
-        ESP_LOGE(TAG, "Network not ready, cannot create Call WebSocket");
-        is_running_.store(false);
-        return;
-    }
-
-    websocket_ = network->CreateWebSocket(1);
-    if (!websocket_) {
-        ESP_LOGE(TAG, "Failed to create WebSocket instance for Call Audio");
-        is_running_.store(false);
-        return;
-    }
-
-    websocket_->OnConnected([]() {
-        ESP_LOGI(TAG, "📞 Call Audio WebSocket Connected to Relay!");
-    });
-
-    websocket_->OnData([this](const char* data, size_t len, bool binary) {
-        if (!is_running_.load()) return;
-        if (binary) {
-            HandleIncomingAudio(data, len);
-        }
-    });
-
-    websocket_->OnDisconnected([]() {
-        ESP_LOGW(TAG, "Call Audio WebSocket Disconnected");
-    });
-
-    ESP_LOGI(TAG, "Connecting Call Audio WS to %s...", url.c_str());
-    if (!websocket_->Connect(url.c_str())) {
-        ESP_LOGE(TAG, "Failed to connect to Call Audio WebSocket: %s", url.c_str());
-    }
-
-    // 3. Start Microphone Streaming Task
+    // 2. Start Microphone Streaming Task (lightweight, zero TLS memory allocated)
     xTaskCreate([](void* arg) {
         auto* self = static_cast<BuddyCallAudioService*>(arg);
         self->MicTask();
         vTaskDelete(NULL);
-    }, "call_mic", 4096, this, 6, &mic_task_handle_);
+    }, "call_mic", 2560, this, 5, &mic_task_handle_);
 }
 
 void BuddyCallAudioService::StopCallAudio() {
@@ -92,19 +49,15 @@ void BuddyCallAudioService::StopCallAudio() {
     }
     is_running_.store(false);
 
-    if (websocket_) {
-        websocket_->Close();
-        websocket_.reset();
-    }
-
     // Give Mic task time to exit cleanly
-    vTaskDelay(pdMS_TO_TICKS(60));
+    vTaskDelay(pdMS_TO_TICKS(50));
     mic_task_handle_ = nullptr;
+    send_fn_ = nullptr;
 
     // Restore idle state for wake word detection
     Application::GetInstance().GetAudioService().EnableWakeWordDetection(true);
 
-    ESP_LOGI(TAG, "Call Audio stopped and restored idle audio pipeline");
+    ESP_LOGI(TAG, "Audio-over-MQTT stopped and restored idle audio pipeline");
 }
 
 void BuddyCallAudioService::MicTask() {
@@ -118,30 +71,31 @@ void BuddyCallAudioService::MicTask() {
         codec->EnableInput(true);
     }
 
-    // 16kHz Mono: 320 samples = 20ms of audio (640 bytes)
-    const int chunk_samples = 320;
+    int sample_rate = codec->input_sample_rate();
+    if (sample_rate <= 0) sample_rate = 16000;
+    // 20ms chunk = sample_rate / 50 samples
+    const int chunk_samples = sample_rate / 50;
     int in_channels = codec->input_channels();
     std::vector<int16_t> input_buf(chunk_samples * in_channels);
 
-    ESP_LOGI(TAG, "Call Mic Task started (channels: %d, rate: %d)", in_channels, codec->input_sample_rate());
+    ESP_LOGI(TAG, "Call Mic Task started (channels: %d, rate: %d, chunk: %d)", in_channels, sample_rate, chunk_samples);
 
     while (is_running_.load()) {
         if (codec->InputData(input_buf)) {
-            if (websocket_ && websocket_->IsConnected()) {
+            if (send_fn_) {
                 if (in_channels == 2) {
                     // Extract left channel for mono
                     std::vector<int16_t> mono_buf(chunk_samples);
                     for (int i = 0; i < chunk_samples; ++i) {
                         mono_buf[i] = input_buf[i * 2];
                     }
-                    websocket_->Send(mono_buf.data(), mono_buf.size() * sizeof(int16_t), true);
+                    send_fn_(up_topic_, std::string(reinterpret_cast<const char*>(mono_buf.data()), mono_buf.size() * sizeof(int16_t)));
                 } else {
-                    websocket_->Send(input_buf.data(), input_buf.size() * sizeof(int16_t), true);
+                    send_fn_(up_topic_, std::string(reinterpret_cast<const char*>(input_buf.data()), input_buf.size() * sizeof(int16_t)));
                 }
             }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(10));
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 
     ESP_LOGI(TAG, "Call Mic Task exited");
@@ -161,7 +115,7 @@ void BuddyCallAudioService::HandleIncomingAudio(const char* data, size_t len) {
     const int16_t* pcm_in = reinterpret_cast<const int16_t*>(data);
 
     if (codec->output_channels() == 2) {
-        // Expand Mono from parent browser to Stereo for 2-channel DAC/I2S
+        // Expand Mono to Stereo for DAC/I2S 2-channel output
         std::vector<int16_t> stereo_buf(sample_count * 2);
         for (size_t i = 0; i < sample_count; ++i) {
             stereo_buf[i * 2] = pcm_in[i];
