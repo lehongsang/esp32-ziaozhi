@@ -99,11 +99,11 @@ void BuddyToastOverlay::Show(const std::string& title, const std::string& body, 
 
     if (title_label_) {
         lv_obj_set_style_text_font(title_label_, GetBuddyFont(), 0);
-        lv_label_set_text(title_label_, title.c_str());
+        lv_label_set_text(title_label_, SanitizeVietnamese(title).c_str());
     }
     if (body_label_) {
         lv_obj_set_style_text_font(body_label_, GetBuddyFont(), 0);
-        lv_label_set_text(body_label_, body.c_str());
+        lv_label_set_text(body_label_, SanitizeVietnamese(body).c_str());
     }
 
     lv_obj_t* icon_box = lv_obj_get_parent(icon_label_);

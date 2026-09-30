@@ -1,5 +1,6 @@
 #include "buddy_home_screen.h"
 #include "assets/buddy_assets.h"
+#include "buddy_font_helper.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 #include <ctime>
@@ -203,11 +204,11 @@ void BuddyHomeScreen::SetGreeting(const std::string& child_name, int total_quest
     total_quests_ = total_quests;
     if (greeting_title_) {
         std::string title = "Chào " + child_name_ + "!";
-        lv_label_set_text(greeting_title_, title.c_str());
+        lv_label_set_text(greeting_title_, SanitizeVietnamese(title).c_str());
     }
     if (greeting_sub_) {
         std::string sub = "Hôm nay con có " + std::to_string(total_quests_) + " việc";
-        lv_label_set_text(greeting_sub_, sub.c_str());
+        lv_label_set_text(greeting_sub_, SanitizeVietnamese(sub).c_str());
     }
 }
 
