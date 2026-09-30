@@ -29,13 +29,13 @@ server.listen(mqttPort, () => {
     console.warn(`⚠️ MQTT TCP port ${mqttPort} not available (${err.message}). Using WebSocket MQTT fallback.`);
 });
 
-function attachWebSocketServer(httpServer) {
-    const wss = new ws.Server({ server: httpServer, path: '/mqtt' });
+function createMqttWsServer() {
+    const wss = new ws.Server({ noServer: true });
     wss.on('connection', (socket) => {
         const stream = ws.createWebSocketStream(socket);
         aedes.handle(stream);
     });
-    console.log(`🌐 MQTT over WebSockets attached to HTTP Server at: /mqtt`);
+    return wss;
 }
 
 aedes.on('client', (client) => {
@@ -101,6 +101,32 @@ aedes.on('publish', (packet, client) => {
                             broadcastEvent('goal_changed', { deviceId, goal_type, goal_name, target_amount });
                         }
                     });
+            } else if (channel === 'call') {
+                const subAction = parts[3] || 'request';
+                console.log(`📞 [MQTT Call] ${subAction} from device ${deviceId}:`, payload);
+                broadcastEvent('call_signal', { deviceId, subAction, payload });
+
+                const { sessions } = require('./call_relay');
+                if (sessions && sessions.has(deviceId)) {
+                    const sess = sessions.get(deviceId);
+                    if (subAction === 'request' && sess.parentWs && sess.parentWs.readyState === 1) {
+                        sess.state = 'calling';
+                        sess.caller = payload.caller || 'Bé Minh';
+                        sess.parentWs.send(JSON.stringify({
+                            type: 'incoming_call',
+                            caller: sess.caller,
+                            from: 'device',
+                            deviceId
+                        }));
+                    } else if (subAction === 'accept' && sess.parentWs && sess.parentWs.readyState === 1) {
+                        sess.state = 'active';
+                        sess.startTime = Date.now();
+                        sess.parentWs.send(JSON.stringify({ type: 'call_connected', deviceId, startTime: sess.startTime }));
+                    } else if ((subAction === 'reject' || subAction === 'end') && sess.parentWs && sess.parentWs.readyState === 1) {
+                        sess.state = 'idle';
+                        sess.parentWs.send(JSON.stringify({ type: 'call_ended', deviceId, reason: payload.reason || 'Ended' }));
+                    }
+                }
             } else if (channel === 'status') {
                 // Periodic status heartbeat
                 const { battery, level, xp } = payload;
@@ -167,7 +193,7 @@ function publishToDevice(deviceId, subTopic, payloadObj) {
 
 module.exports = {
     aedes,
-    attachWebSocketServer,
+    createMqttWsServer,
     publishToDevice,
     setDashboardBroadcast,
     broadcastEvent

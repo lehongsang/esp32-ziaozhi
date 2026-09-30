@@ -24,12 +24,64 @@
                 </div>
             </div>
             <div class="header-right">
+                <button type="button" class="btn-call-parent" id="btnHeaderCall" onclick="startParentCall()">
+                    <span class="call-btn-icon">📞</span>
+                    <span>Gọi Thoại Cho Bé</span>
+                </button>
                 <div class="device-status-badge">
-                    <span class="status-dot online"></span>
+                    <span class="status-dot online" id="statusDot"></span>
                     <span id="deviceStatusText">ESP32 Buddy • Trực Tuyến</span>
                 </div>
             </div>
         </header>
+
+        <!-- Voice Call Modal Overlay -->
+        <div class="call-modal-backdrop" id="callModal" style="display: none;">
+            <div class="call-modal-card glass-card">
+                <div class="call-avatar-pulse" id="callAvatarPulse">
+                    <div class="call-avatar-circle">👦</div>
+                </div>
+                <h3 class="call-title" id="callTitle">Bé Minh (Buddy ESP32)</h3>
+                <p class="call-status-text" id="callStatusText">Đang đổ chuông...</p>
+                <div class="call-timer" id="callTimer" style="display: none;">00:00</div>
+
+                <!-- Equalizer Visualizer -->
+                <div class="call-equalizer" id="callEqualizer">
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                    <span class="eq-bar"></span>
+                </div>
+
+                <!-- Call Action Buttons -->
+                <div class="call-actions-row" id="callingActions">
+                    <button type="button" class="btn-circle btn-call-hangup" onclick="endCall()" title="Dừng cuộc gọi">
+                        <span>📞</span>
+                    </button>
+                </div>
+
+                <div class="call-actions-row" id="incomingActions" style="display: none;">
+                    <button type="button" class="btn-circle btn-call-accept" onclick="acceptIncomingCall()" title="Nghe máy">
+                        <span>📞</span>
+                    </button>
+                    <button type="button" class="btn-circle btn-call-hangup" onclick="rejectIncomingCall()" title="Từ chối">
+                        <span>❌</span>
+                    </button>
+                </div>
+
+                <div class="call-actions-row" id="activeActions" style="display: none;">
+                    <button type="button" class="btn-circle btn-call-mute" id="btnMuteMic" onclick="toggleMuteMic()" title="Tắt tiếng Micro">
+                        <span>🎙️</span>
+                    </button>
+                    <button type="button" class="btn-circle btn-call-hangup" onclick="endCall()" title="Kết thúc cuộc gọi">
+                        <span>📞</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Functional Grid -->
         <main class="dashboard-grid">

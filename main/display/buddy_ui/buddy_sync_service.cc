@@ -10,6 +10,7 @@
 #include "display.h"
 #include "settings.h"
 #include "buddy_toast_overlay.h"
+#include "buddy_call_overlay.h"
 #include "buddy_reminder_scheduler.h"
 
 #define TAG "BuddySyncService"
@@ -45,12 +46,13 @@ void BuddySyncService::InitSntp() {
     }
 }
 
-void BuddySyncService::Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen) {
+void BuddySyncService::Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen, BuddyCallScreen* call_screen) {
     std::lock_guard<std::mutex> lock(mutex_);
     home_screen_ = home_screen;
     quest_screen_ = quest_screen;
     savings_screen_ = savings_screen;
     family_screen_ = family_screen;
+    call_screen_ = call_screen;
 
     // Set POSIX Timezone early (does not touch lwIP TCP/IP stack)
     setenv("TZ", "ICT-7", 1);
@@ -113,6 +115,7 @@ void BuddySyncService::ConnectMqtt() {
             mqtt_->Subscribe(prefix + "savings/set", 0);
             mqtt_->Subscribe(prefix + "family/message", 0);
             mqtt_->Subscribe(prefix + "time/set", 0);
+            mqtt_->Subscribe(prefix + "call/#", 0);
 
             // Also subscribe to wildcard default
             if (device_id_ != "default") {
@@ -120,6 +123,7 @@ void BuddySyncService::ConnectMqtt() {
                 mqtt_->Subscribe("buddy/default/savings/set", 0);
                 mqtt_->Subscribe("buddy/default/family/message", 0);
                 mqtt_->Subscribe("buddy/default/time/set", 0);
+                mqtt_->Subscribe("buddy/default/call/#", 0);
             }
 
             // Request current real time from server
@@ -192,8 +196,15 @@ void BuddySyncService::HandleIncomingMqtt(const std::string& topic, const std::s
         return;
     }
 
-    if (topic.find("/time/set") != std::string::npos || (cJSON_GetObjectItem(root, "timestamp") != nullptr && cJSON_GetObjectItem(root, "quests") == nullptr && cJSON_GetObjectItem(root, "message") == nullptr)) {
+    if (topic.find("/time/set") != std::string::npos || (cJSON_GetObjectItem(root, "timestamp") != nullptr && cJSON_GetObjectItem(root, "quests") == nullptr && cJSON_GetObjectItem(root, "message") == nullptr && cJSON_GetObjectItem(root, "caller") == nullptr)) {
         HandleTimePayload(root);
+    } else if (topic.find("/call/") != std::string::npos || cJSON_GetObjectItem(root, "caller") != nullptr || topic.find("/call") != std::string::npos) {
+        std::string subaction = "request";
+        if (topic.find("/call/request") != std::string::npos) subaction = "request";
+        else if (topic.find("/call/accept") != std::string::npos || topic.find("/call/connected") != std::string::npos) subaction = "accept";
+        else if (topic.find("/call/reject") != std::string::npos) subaction = "reject";
+        else if (topic.find("/call/end") != std::string::npos) subaction = "end";
+        HandleCallPayload(subaction, root);
     } else if (topic.find("/quests/set") != std::string::npos || cJSON_GetObjectItem(root, "quests") != nullptr || cJSON_IsArray(root)) {
         HandleQuestsPayload(root);
     } else if (topic.find("/savings/set") != std::string::npos || cJSON_GetObjectItem(root, "savings") != nullptr || cJSON_GetObjectItem(root, "target_amount") != nullptr) {
@@ -408,3 +419,98 @@ void BuddySyncService::SendHeartbeat(int battery, int level, int xp) {
     cJSON_free(json_str);
     cJSON_Delete(root);
 }
+
+void BuddySyncService::HandleCallPayload(const std::string& subaction, cJSON* root) {
+    if (!root) return;
+
+    cJSON* type_item = cJSON_GetObjectItem(root, "type");
+    std::string type = type_item && cJSON_IsString(type_item) ? type_item->valuestring : subaction;
+
+    cJSON* caller_item = cJSON_GetObjectItem(root, "caller");
+    std::string caller = caller_item && cJSON_IsString(caller_item) ? caller_item->valuestring : "Mẹ Yêu";
+
+    ESP_LOGI(TAG, "📞 HandleCallPayload action: %s, caller: %s", type.c_str(), caller.c_str());
+
+    if (type == "incoming_call" || type == "request") {
+        BuddyCallOverlay::GetInstance().ShowIncomingCall(
+            caller,
+            [this]() {
+                ESP_LOGI(TAG, "Call accepted by child on device");
+                AcceptCall();
+            },
+            [this]() {
+                ESP_LOGI(TAG, "Call rejected by child on device");
+                RejectCall();
+            }
+        );
+    } else if (type == "call_connected" || type == "accept") {
+        ESP_LOGI(TAG, "Call is now ACTIVE");
+        BuddyCallOverlay::GetInstance().SetCallActive();
+    } else if (type == "call_ended" || type == "reject" || type == "end") {
+        ESP_LOGI(TAG, "Call is ENDED");
+        BuddyCallOverlay::GetInstance().EndCall();
+    }
+}
+
+void BuddySyncService::StartCall() {
+    if (!mqtt_ || !is_connected_) return;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", device_id_.c_str());
+    cJSON_AddStringToObject(root, "caller", "Bé Minh");
+    cJSON_AddStringToObject(root, "from", "device");
+
+    char* json_str = cJSON_PrintUnformatted(root);
+    std::string topic = "buddy/" + device_id_ + "/call/request";
+    mqtt_->Publish(topic, json_str, 0);
+
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+}
+
+void BuddySyncService::AcceptCall() {
+    if (!mqtt_ || !is_connected_) return;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", device_id_.c_str());
+    cJSON_AddStringToObject(root, "from", "device");
+
+    char* json_str = cJSON_PrintUnformatted(root);
+    std::string topic = "buddy/" + device_id_ + "/call/accept";
+    mqtt_->Publish(topic, json_str, 0);
+
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+}
+
+void BuddySyncService::RejectCall(const std::string& reason) {
+    if (!mqtt_ || !is_connected_) return;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", device_id_.c_str());
+    cJSON_AddStringToObject(root, "reason", reason.c_str());
+    cJSON_AddStringToObject(root, "from", "device");
+
+    char* json_str = cJSON_PrintUnformatted(root);
+    std::string topic = "buddy/" + device_id_ + "/call/reject";
+    mqtt_->Publish(topic, json_str, 0);
+
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+}
+
+void BuddySyncService::EndCall() {
+    if (!mqtt_ || !is_connected_) return;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "device_id", device_id_.c_str());
+    cJSON_AddStringToObject(root, "from", "device");
+
+    char* json_str = cJSON_PrintUnformatted(root);
+    std::string topic = "buddy/" + device_id_ + "/call/end";
+    mqtt_->Publish(topic, json_str, 0);
+
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+}
+

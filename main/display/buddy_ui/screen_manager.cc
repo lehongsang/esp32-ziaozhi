@@ -1,6 +1,7 @@
 #include "screen_manager.h"
 #include "buddy_sync_service.h"
 #include "buddy_toast_overlay.h"
+#include "buddy_call_overlay.h"
 #include "buddy_reminder_scheduler.h"
 #include "settings.h"
 #include "board.h"
@@ -72,6 +73,12 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     lv_obj_clear_flag(tiles_[5], LV_OBJ_FLAG_SCROLLABLE);
     family_screen_.Create(tiles_[5]);
 
+    // Screen 6: Family Voice Call (Screen 7 - Dedicated 3D AI Family Call Screen)
+    tiles_[6] = lv_tileview_add_tile(tileview_, 6, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[6], LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(tiles_[6], LV_OBJ_FLAG_SCROLLABLE);
+    call_screen_.Create(tiles_[6]);
+
     // 4. Create Page Indicator Dots at Bottom
     CreatePageIndicators(bg);
 
@@ -88,8 +95,9 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     // 6. Create Settings Control Center Overlay (Sits on top layer)
     settings_screen_.Create(bg);
 
-    // 6.1 Initialize Toast Notification Overlay (Top layer)
+    // 6.1 Initialize Toast & Call Overlays (Top layer)
     BuddyToastOverlay::GetInstance().Initialize(lv_layer_top());
+    BuddyCallOverlay::GetInstance().Initialize(lv_layer_top());
 
     // 6.2 Bind Screen 1 Action Buttons
     home_screen_.SetOnViewQuests([this]() {
@@ -172,11 +180,20 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     UpdateIndicators(0);
 
     // 8. Initialize Backend Sync Service & Hooks
-    BuddySyncService::GetInstance().Initialize(&home_screen_, &quest_screen_, &savings_screen_, &family_screen_);
+    BuddySyncService::GetInstance().Initialize(&home_screen_, &quest_screen_, &savings_screen_, &family_screen_, &call_screen_);
     family_screen_.OnLikeClicked([](bool liked) {
         if (liked) {
             BuddySyncService::GetInstance().NotifyFamilyLove();
         }
+    });
+
+    call_screen_.SetOnCallParent([](const std::string& parent_role) {
+        ESP_LOGI(TAG, "Child requested call to %s from Call Screen", parent_role.c_str());
+        BuddyCallOverlay::GetInstance().ShowOutgoingCall(parent_role, []() {
+            ESP_LOGI(TAG, "Outgoing call cancelled by child");
+            BuddySyncService::GetInstance().EndCall();
+        });
+        BuddySyncService::GetInstance().StartCall();
     });
 
     // 9. Bind Reminder Scheduler Trigger -> Automatically show Next Task if on time
@@ -187,7 +204,7 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
         }
     });
 
-    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 5 screens, 3D Onboarding, Toast Overlay & Reminders");
+    ESP_LOGI(TAG, "BuddyScreenManager successfully initialized with 7 screens, 3D AI Family Call & Reminders");
 }
 
 void BuddyScreenManager::CreatePageIndicators(lv_obj_t* parent) {

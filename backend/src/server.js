@@ -2,8 +2,10 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
+const url = require('url');
 const routes = require('./routes');
-const { attachWebSocketServer } = require('./mqtt');
+const { createMqttWsServer } = require('./mqtt');
+const { attachCallRelayServer } = require('./call_relay');
 
 const app = express();
 const httpPort = process.env.PORT || 3000;
@@ -24,14 +26,35 @@ app.get('*', (req, res) => {
 });
 
 const server = http.createServer(app);
-attachWebSocketServer(server);
+
+// Initialize WebSocket Servers
+const mqttWss = createMqttWsServer();
+const callWss = attachCallRelayServer(server);
+
+// Multiplex HTTP Upgrade requests by path
+server.on('upgrade', (request, socket, head) => {
+    const pathname = url.parse(request.url).pathname;
+
+    if (pathname === '/mqtt') {
+        mqttWss.handleUpgrade(request, socket, head, (ws) => {
+            mqttWss.emit('connection', ws, request);
+        });
+    } else if (pathname === '/call') {
+        callWss.handleUpgrade(request, socket, head, (ws) => {
+            callWss.emit('connection', ws, request);
+        });
+    } else {
+        socket.destroy();
+    }
+});
 
 server.listen(httpPort, () => {
     console.log(`\n======================================================`);
-    console.log(`🚀 MB BUDDY LIVE SYNC BACKEND READY!`);
-    console.log(`🌐 Web Test Dashboard:  http://localhost:${httpPort}`);
-    console.log(`📡 MQTT Broker (TCP):   Port 1883`);
-    console.log(`🌐 MQTT Broker (WS):    ws://localhost:${httpPort}/mqtt`);
-    console.log(`🔌 REST API Base URL:   http://localhost:${httpPort}/api`);
+    console.log(`🚀 MB BUDDY LIVE SYNC & CALL SERVER READY!`);
+    console.log(`🌐 Web Parent Dashboard: http://localhost:${httpPort}`);
+    console.log(`📡 MQTT Broker (TCP):    Port 1883`);
+    console.log(`🌐 MQTT Broker (WS):     ws://localhost:${httpPort}/mqtt`);
+    console.log(`📞 Voice Call Relay:     ws://localhost:${httpPort}/call`);
+    console.log(`🔌 REST API Base URL:    http://localhost:${httpPort}/api`);
     console.log(`======================================================\n`);
 });

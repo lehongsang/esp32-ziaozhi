@@ -297,3 +297,317 @@ function connectSSE() {
 // Start
 loadInitialState();
 connectSSE();
+
+// ==========================================================================
+// Voice Call System (WebSocket Audio Streaming & Signaling)
+// ==========================================================================
+let callWs = null;
+let callState = 'idle'; // 'idle' | 'calling' | 'incoming' | 'active'
+let callTimerInterval = null;
+let callStartTime = 0;
+let audioContext = null;
+let mediaStream = null;
+let scriptProcessor = null;
+let isMicMuted = false;
+let nextPlayTime = 0;
+
+function initCallWebSocket() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${location.host}/call?type=parent&deviceId=${DEVICE_ID}`;
+    
+    callWs = new WebSocket(wsUrl);
+    callWs.binaryType = 'arraybuffer';
+
+    callWs.onopen = () => {
+        log('📞 Đã kết nối kênh thoại Voice Call Relay!', 'success');
+    };
+
+    callWs.onmessage = (event) => {
+        // Binary Audio Packet from ESP32 -> Play in Browser
+        if (event.data instanceof ArrayBuffer) {
+            if (callState === 'active') {
+                playIncomingAudioChunk(event.data);
+            }
+            return;
+        }
+
+        // Text JSON Signaling Messages
+        try {
+            const msg = JSON.parse(event.data);
+            handleCallSignaling(msg);
+        } catch (e) {
+            console.error('Call JSON parse error:', e);
+        }
+    };
+
+    callWs.onclose = () => {
+        console.warn('Call WS closed, reconnecting in 3s...');
+        if (callState !== 'idle') {
+            endCallLocally('Mất kết nối máy chủ');
+        }
+        setTimeout(initCallWebSocket, 3000);
+    };
+}
+
+function handleCallSignaling(msg) {
+    console.log('📞 [Call Event]:', msg);
+
+    switch (msg.type) {
+        case 'device_status': {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('deviceStatusText');
+            if (msg.online) {
+                if (statusDot) statusDot.className = 'status-dot online';
+                if (statusText) statusText.innerText = 'ESP32 Buddy • Trực Tuyến';
+            } else {
+                if (statusDot) statusDot.className = 'status-dot';
+                if (statusText) statusText.innerText = 'ESP32 Buddy • Ngoại Tuyến';
+            }
+            break;
+        }
+
+        case 'incoming_call': {
+            // Child is calling parent
+            callState = 'incoming';
+            showCallModal({
+                title: `${msg.caller || 'Bé Minh'} đang gọi...`,
+                status: 'Cuộc gọi đến từ thiết bị Buddy',
+                mode: 'incoming'
+            });
+            log(`🔔 [Cuộc gọi] Bé đang gọi cho Bố/Mẹ từ thiết bị!`, 'pink');
+            break;
+        }
+
+        case 'call_connected': {
+            // Call accepted and active!
+            callState = 'active';
+            callStartTime = Date.now();
+            showCallModal({
+                title: 'Bé Minh (Buddy ESP32)',
+                status: 'Đang đàm thoại 2 chiều',
+                mode: 'active'
+            });
+            startCallTimer();
+            startAudioStream();
+            log('🎙️ [Cuộc gọi] Kết nối thành công! Đang đàm thoại 2 chiều với bé.', 'success');
+            break;
+        }
+
+        case 'call_rejected': {
+            log(`❌ [Cuộc gọi] Cuộc gọi bị từ chối: ${msg.reason || 'Bận'}`, 'amber');
+            endCallLocally('Bé từ chối hoặc đang bận');
+            break;
+        }
+
+        case 'call_failed': {
+            log(`⚠️ [Cuộc gọi] Không thể gọi: ${msg.reason}`, 'amber');
+            alert(msg.reason);
+            endCallLocally(msg.reason);
+            break;
+        }
+
+        case 'call_ended': {
+            log(`⏹️ [Cuộc gọi] Cuộc gọi đã kết thúc. Thời lượng: ${msg.duration || 0}s`, 'info');
+            endCallLocally('Cuộc gọi kết thúc');
+            break;
+        }
+    }
+}
+
+// UI Actions
+function startParentCall() {
+    if (!callWs || callWs.readyState !== WebSocket.OPEN) {
+        alert('Chưa kết nối được với máy chủ cuộc gọi! Vui lòng thử lại sau vài giây.');
+        return;
+    }
+
+    callState = 'calling';
+    showCallModal({
+        title: 'Bé Minh (Buddy ESP32)',
+        status: 'Đang đổ chuông thiết bị...',
+        mode: 'calling'
+    });
+
+    callWs.send(JSON.stringify({
+        type: 'call_request',
+        caller: 'Mẹ'
+    }));
+
+    log('📞 [Cuộc gọi] Đang gọi tới thiết bị của bé...', 'info');
+}
+
+function acceptIncomingCall() {
+    if (callWs && callWs.readyState === WebSocket.OPEN) {
+        callWs.send(JSON.stringify({ type: 'call_accept' }));
+    }
+}
+
+function rejectIncomingCall() {
+    if (callWs && callWs.readyState === WebSocket.OPEN) {
+        callWs.send(JSON.stringify({ type: 'call_reject', reason: 'Bố Mẹ đang bận' }));
+    }
+    endCallLocally();
+}
+
+function endCall() {
+    if (callWs && callWs.readyState === WebSocket.OPEN) {
+        callWs.send(JSON.stringify({ type: 'call_end' }));
+    }
+    endCallLocally();
+}
+
+function endCallLocally(statusMsg) {
+    callState = 'idle';
+    stopAudioStream();
+    stopCallTimer();
+
+    const statusEl = document.getElementById('callStatusText');
+    if (statusEl && statusMsg) {
+        statusEl.innerText = statusMsg;
+    }
+
+    setTimeout(() => {
+        document.getElementById('callModal').style.display = 'none';
+    }, 1200);
+}
+
+function showCallModal({ title, status, mode }) {
+    const modal = document.getElementById('callModal');
+    document.getElementById('callTitle').innerText = title;
+    document.getElementById('callStatusText').innerText = status;
+    modal.style.display = 'flex';
+
+    const callingActions = document.getElementById('callingActions');
+    const incomingActions = document.getElementById('incomingActions');
+    const activeActions = document.getElementById('activeActions');
+    const timerEl = document.getElementById('callTimer');
+    const equalizer = document.getElementById('callEqualizer');
+
+    callingActions.style.display = (mode === 'calling') ? 'flex' : 'none';
+    incomingActions.style.display = (mode === 'incoming') ? 'flex' : 'none';
+    activeActions.style.display = (mode === 'active') ? 'flex' : 'none';
+    timerEl.style.display = (mode === 'active') ? 'block' : 'none';
+    equalizer.style.display = (mode === 'active') ? 'flex' : 'none';
+}
+
+function startCallTimer() {
+    stopCallTimer();
+    const timerEl = document.getElementById('callTimer');
+    timerEl.innerText = '00:00';
+
+    callTimerInterval = setInterval(() => {
+        const diff = Math.floor((Date.now() - callStartTime) / 1000);
+        const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+        const secs = String(diff % 60).padStart(2, '0');
+        timerEl.innerText = `${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopCallTimer() {
+    if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+    }
+}
+
+function toggleMuteMic() {
+    isMicMuted = !isMicMuted;
+    const muteBtn = document.getElementById('btnMuteMic');
+    if (muteBtn) {
+        muteBtn.className = isMicMuted ? 'btn-circle btn-call-mute muted' : 'btn-circle btn-call-mute';
+        muteBtn.innerHTML = isMicMuted ? '<span>🔇</span>' : '<span>🎙️</span>';
+    }
+}
+
+// Audio Stream Capture & Playback
+async function startAudioStream() {
+    try {
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        nextPlayTime = audioContext.currentTime;
+
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                sampleRate: 16000,
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
+        });
+
+        const micSource = audioContext.createMediaStreamSource(mediaStream);
+        scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
+
+        scriptProcessor.onaudioprocess = (e) => {
+            if (callState !== 'active' || isMicMuted) return;
+
+            const inputData = e.inputBuffer.getChannelData(0);
+            // Convert Float32 to 16-bit PCM buffer
+            const pcm16 = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+                let s = Math.max(-1, Math.min(1, inputData[i]));
+                pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+
+            if (callWs && callWs.readyState === WebSocket.OPEN) {
+                callWs.send(pcm16.buffer);
+            }
+        };
+
+        micSource.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+
+    } catch (err) {
+        console.error('Audio capture failed:', err);
+        log(`⚠️ Không thể truy cập Micro: ${err.message}`, 'amber');
+    }
+}
+
+function playIncomingAudioChunk(arrayBuffer) {
+    if (!audioContext) return;
+
+    try {
+        const int16Array = new Int16Array(arrayBuffer);
+        const float32Array = new Float32Array(int16Array.length);
+        for (let i = 0; i < int16Array.length; i++) {
+            float32Array[i] = int16Array[i] / 32768.0;
+        }
+
+        const audioBuffer = audioContext.createBuffer(1, float32Array.length, 16000);
+        audioBuffer.copyToChannel(float32Array, 0);
+
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        const now = audioContext.currentTime;
+        if (nextPlayTime < now) {
+            nextPlayTime = now + 0.02;
+        }
+        source.start(nextPlayTime);
+        nextPlayTime += audioBuffer.duration;
+
+    } catch (err) {
+        console.error('Error playing audio chunk:', err);
+    }
+}
+
+function stopAudioStream() {
+    if (scriptProcessor) {
+        scriptProcessor.disconnect();
+        scriptProcessor = null;
+    }
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+    if (audioContext) {
+        audioContext.close().catch(() => {});
+        audioContext = null;
+    }
+}
+
+// Initialize Voice Call Relay
+initCallWebSocket();
+

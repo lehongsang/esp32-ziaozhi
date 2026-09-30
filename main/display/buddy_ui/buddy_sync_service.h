@@ -14,12 +14,13 @@
 #include "today_quest_screen.h"
 #include "savings_screen.h"
 #include "family_moment_screen.h"
+#include "buddy_call_screen.h"
 
 class BuddySyncService {
 public:
     static BuddySyncService& GetInstance();
 
-    void Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen);
+    void Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen* quest_screen, SavingsScreen* savings_screen, FamilyMomentScreen* family_screen, BuddyCallScreen* call_screen = nullptr);
     void Start(const std::string& broker_host = "", int broker_port = 0);
     void Stop();
 
@@ -28,6 +29,12 @@ public:
     void NotifyFamilyLove();
     void NotifyGoalChanged(int goal_type, const std::string& goal_name, int32_t target_amount);
     void SendHeartbeat(int battery, int level, int xp);
+
+    // Voice Call Signaling
+    void StartCall();
+    void AcceptCall();
+    void RejectCall(const std::string& reason = "Decline");
+    void EndCall();
 
     bool IsConnected() const { return is_connected_; }
 
@@ -43,12 +50,14 @@ private:
     void HandleSavingsPayload(cJSON* root);
     void HandleFamilyMessagePayload(cJSON* root);
     void HandleTimePayload(cJSON* root);
+    void HandleCallPayload(const std::string& subaction, cJSON* root);
     void InitSntp();
 
     BuddyHomeScreen* home_screen_ = nullptr;
     TodayQuestScreen* quest_screen_ = nullptr;
     SavingsScreen* savings_screen_ = nullptr;
     FamilyMomentScreen* family_screen_ = nullptr;
+    BuddyCallScreen* call_screen_ = nullptr;
 
     std::unique_ptr<Mqtt> mqtt_;
     std::string device_id_ = "default";

@@ -315,8 +315,3 @@ void FamilyMomentScreen::ClearMessage() {
 void FamilyMomentScreen::OnLikeClicked(std::function<void(bool liked)> callback) {
     on_like_click_ = callback;
 }
-
-
-
-
-

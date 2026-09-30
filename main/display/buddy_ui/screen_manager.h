@@ -15,6 +15,7 @@
 #include "ai_tutor_screen.h"
 #include "savings_screen.h"
 #include "family_moment_screen.h"
+#include "buddy_call_screen.h"
 #include "settings_screen.h"
 #include "buddy_onboarding_screen.h"
 
@@ -32,6 +33,7 @@ public:
     AiTutorScreen& GetTutorScreen() { return tutor_screen_; }
     SavingsScreen& GetSavingsScreen() { return savings_screen_; }
     FamilyMomentScreen& GetFamilyScreen() { return family_screen_; }
+    BuddyCallScreen& GetCallScreen() { return call_screen_; }
     SettingsScreen& GetSettingsScreen() { return settings_screen_; }
     BuddyOnboardingScreen& GetOnboardingScreen() { return onboarding_screen_; }
 
@@ -58,6 +60,7 @@ private:
     AiTutorScreen tutor_screen_;
     SavingsScreen savings_screen_;
     FamilyMomentScreen family_screen_;
+    BuddyCallScreen call_screen_;
     SettingsScreen settings_screen_;
     BuddyOnboardingScreen onboarding_screen_;
 

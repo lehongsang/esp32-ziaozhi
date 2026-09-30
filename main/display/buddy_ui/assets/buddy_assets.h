@@ -23,6 +23,7 @@ extern const lv_image_dsc_t buddy_food_corn;
 extern const lv_image_dsc_t buddy_food_potato;
 extern const lv_image_dsc_t buddy_food_carrot;
 extern const lv_image_dsc_t buddy_robot_avatar;
+extern const lv_image_dsc_t buddy_family_call;
 
 #ifdef __cplusplus
 }

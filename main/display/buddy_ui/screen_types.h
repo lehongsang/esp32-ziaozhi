@@ -10,7 +10,8 @@ enum class BuddyScreenId : uint8_t {
     kScreenTutor = 3,    // Màn 4: AI Tutor (Gia sư trợ lý giọng nói)
     kScreenSavings = 4,  // Màn 5: Savings Dream Goal (Mục tiêu tiết kiệm)
     kScreenFamily = 5,   // Màn 6: Family Moment (Hộp thư gia đình)
-    kScreenCount = 6
+    kScreenCall = 6,     // Màn 7: Family Voice Call (Gọi điện trực tiếp cho Bố Mẹ)
+    kScreenCount = 7
 };
 
 enum class QuestStatus : uint8_t {
