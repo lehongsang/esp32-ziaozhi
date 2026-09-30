@@ -35,30 +35,41 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
     lv_obj_remove_style_all(tileview_);
     lv_obj_set_size(tileview_, lv_pct(100), lv_pct(100));
     lv_obj_set_style_bg_opa(tileview_, LV_OPA_TRANSP, 0);
+    lv_obj_set_scrollbar_mode(tileview_, LV_SCROLLBAR_MODE_OFF);
 
     // 3. Add 6 Main Screens
     // Screen 0: Piggy Mascot & Greeting (Main Screen 1)
     tiles_[0] = lv_tileview_add_tile(tileview_, 0, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[0], LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(tiles_[0], LV_OBJ_FLAG_SCROLLABLE);
     piggy_screen_.Create(tiles_[0]);
 
     // Screen 1: Today's Overview (Main Screen 2 - 3D Bear Mascot + 2 Big Action Buttons conforming to Image 3)
     tiles_[1] = lv_tileview_add_tile(tileview_, 1, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[1], LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(tiles_[1], LV_OBJ_FLAG_SCROLLABLE);
     home_screen_.Create(tiles_[1]);
 
     // Screen 2: Today's Quest (Mission Screen 3)
     tiles_[2] = lv_tileview_add_tile(tileview_, 2, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[2], LV_SCROLLBAR_MODE_OFF);
     quest_screen_.Create(tiles_[2]);
 
     // Screen 3: AI Tutor (Screen 4)
     tiles_[3] = lv_tileview_add_tile(tileview_, 3, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[3], LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(tiles_[3], LV_OBJ_FLAG_SCROLLABLE);
     tutor_screen_.Create(tiles_[3]);
 
     // Screen 4: Savings Dream Goal (Screen 5)
     tiles_[4] = lv_tileview_add_tile(tileview_, 4, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[4], LV_SCROLLBAR_MODE_OFF);
     savings_screen_.Create(tiles_[4]);
 
     // Screen 5: Family Moment (Screen 6)
     tiles_[5] = lv_tileview_add_tile(tileview_, 5, 0, (lv_dir_t)(LV_DIR_LEFT | LV_DIR_RIGHT));
+    lv_obj_set_scrollbar_mode(tiles_[5], LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(tiles_[5], LV_OBJ_FLAG_SCROLLABLE);
     family_screen_.Create(tiles_[5]);
 
     // 4. Create Page Indicator Dots at Bottom
