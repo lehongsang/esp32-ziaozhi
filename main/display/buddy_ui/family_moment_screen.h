@@ -42,11 +42,11 @@ private:
     // View: Placeholder / Empty Card
     lv_obj_t* placeholder_card_ = nullptr;
 
-    bool has_message_ = true;
+    bool has_message_ = false;
     bool is_liked_ = false;
-    std::string sender_name_ = "Mom";
-    std::string message_body_ = "Con yêu ơi! Hôm nay con học rất chăm chỉ. Bố mẹ tự hào về con nhiều lắm!";
-    std::string timestamp_ = "Today, 08:30";
+    std::string sender_name_ = "Mẹ";
+    std::string message_body_ = "";
+    std::string timestamp_ = "Hôm nay";
     std::function<void(bool liked)> on_like_click_;
 };
 

@@ -1,5 +1,6 @@
 #include "family_moment_screen.h"
 #include "buddy_font_helper.h"
+#include "settings.h"
 #include <esp_log.h>
 
 #define TAG "FamilyMomentScreen"
@@ -8,6 +9,14 @@ FamilyMomentScreen::FamilyMomentScreen() {}
 FamilyMomentScreen::~FamilyMomentScreen() {}
 
 void FamilyMomentScreen::Create(lv_obj_t* parent) {
+    // 0. Load persisted message from NVS
+    Settings settings("family_msg", false);
+    sender_name_ = settings.GetString("sender", "");
+    message_body_ = settings.GetString("message", "");
+    timestamp_ = settings.GetString("time", "Hôm nay");
+    is_liked_ = settings.GetInt("liked", 0) == 1;
+    has_message_ = !message_body_.empty();
+
     // 1. Root Container (Deep Loving Dark Blue-Purple)
     container_ = lv_obj_create(parent);
     lv_obj_remove_style_all(container_);
@@ -120,10 +129,10 @@ void FamilyMomentScreen::Create(lv_obj_t* parent) {
 
     sender_label_ = lv_label_create(sender_badge_);
     lv_obj_set_style_text_font(sender_label_, GetBuddyFont(), 0);
-    std::string initial_sender = sender_name_;
-    if (sender_name_ == "Mom") initial_sender = "Mẹ";
-    else if (sender_name_ == "Dad") initial_sender = "Bố";
-    else if (sender_name_ == "Family") initial_sender = "Gia đình";
+    std::string initial_sender = sender_name_.empty() ? "Mẹ" : sender_name_;
+    if (initial_sender == "Mom") initial_sender = "Mẹ";
+    else if (initial_sender == "Dad") initial_sender = "Bố";
+    else if (initial_sender == "Family") initial_sender = "Gia đình";
     lv_label_set_text(sender_label_, initial_sender.c_str());
     lv_obj_set_style_text_color(sender_label_, lv_color_hex(0xFDE047), 0);
 
@@ -199,17 +208,28 @@ void FamilyMomentScreen::OnLikeButtonEventCb(lv_event_t* e) {
     ESP_LOGI(TAG, "Family reaction like toggled: %d", self->is_liked_);
     self->UpdateLikeButtonState();
 
+    // Persist liked state to NVS
+    Settings settings("family_msg", true);
+    settings.SetInt("liked", self->is_liked_ ? 1 : 0);
+
     if (self->on_like_click_) {
         self->on_like_click_(self->is_liked_);
     }
 }
 
 void FamilyMomentScreen::SetMessage(const std::string& sender, const std::string& message, const std::string& timestamp) {
-    has_message_ = true;
+    has_message_ = !message.empty();
     sender_name_ = sender;
     message_body_ = message;
     timestamp_ = timestamp;
     is_liked_ = false;
+
+    // Persist to NVS
+    Settings settings("family_msg", true);
+    settings.SetString("sender", sender);
+    settings.SetString("message", message);
+    settings.SetString("time", timestamp);
+    settings.SetInt("liked", 0);
 
     if (sender_label_) {
         std::string display_sender = sender;
@@ -230,13 +250,22 @@ void FamilyMomentScreen::SetMessage(const std::string& sender, const std::string
 
     UpdateLikeButtonState();
 
-    if (msg_card_) lv_obj_clear_flag(msg_card_, LV_OBJ_FLAG_HIDDEN);
-    if (placeholder_card_) lv_obj_add_flag(placeholder_card_, LV_OBJ_FLAG_HIDDEN);
+    if (has_message_) {
+        if (msg_card_) lv_obj_clear_flag(msg_card_, LV_OBJ_FLAG_HIDDEN);
+        if (placeholder_card_) lv_obj_add_flag(placeholder_card_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        if (msg_card_) lv_obj_add_flag(msg_card_, LV_OBJ_FLAG_HIDDEN);
+        if (placeholder_card_) lv_obj_clear_flag(placeholder_card_, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void FamilyMomentScreen::ClearMessage() {
     has_message_ = false;
     is_liked_ = false;
+
+    Settings settings("family_msg", true);
+    settings.EraseKey("message");
+    settings.EraseKey("sender");
 
     if (msg_card_) lv_obj_add_flag(msg_card_, LV_OBJ_FLAG_HIDDEN);
     if (placeholder_card_) lv_obj_clear_flag(placeholder_card_, LV_OBJ_FLAG_HIDDEN);
@@ -245,6 +274,7 @@ void FamilyMomentScreen::ClearMessage() {
 void FamilyMomentScreen::OnLikeClicked(std::function<void(bool liked)> callback) {
     on_like_click_ = callback;
 }
+
 
 
 
