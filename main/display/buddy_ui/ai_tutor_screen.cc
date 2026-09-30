@@ -132,10 +132,10 @@ void AiTutorScreen::Create(lv_obj_t* parent) {
     lv_obj_set_style_text_color(mic_icon_, lv_color_hex(0x10B981), 0); // Emerald Green Microphone
     lv_obj_center(mic_icon_);
 
-    // 5. Bottom Status Footer Label (Pos: 12, 196, Width: 296)
+    // 5. Bottom Status Footer Label (Pos: 12, 196, Width: 296, Height: 24)
     status_label_ = lv_label_create(container_);
     lv_obj_set_style_text_font(status_label_, GetBuddyFont(), 0);
-    lv_obj_set_size(status_label_, 296, 20);
+    lv_obj_set_size(status_label_, 296, 24);
     lv_obj_set_pos(status_label_, 12, 196);
     lv_obj_set_style_text_align(status_label_, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(status_label_, "Luôn sẵn sàng khi con cần");

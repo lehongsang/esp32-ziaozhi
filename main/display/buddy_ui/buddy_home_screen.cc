@@ -60,11 +60,11 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_label_set_text(level_txt, "Level 1");
     lv_obj_set_style_text_color(level_txt, lv_color_hex(0xFBBF24), 0);
 
-    // 3. Right Column - Top Greeting Card (Spacious 196x76, Pos: 112, 32, Align START)
+    // 3. Right Column - Top Greeting Card (Spacious 204x78, Pos: 106, 30, Align START)
     header_card_ = lv_obj_create(container_);
     lv_obj_remove_style_all(header_card_);
-    lv_obj_set_size(header_card_, 196, 76);
-    lv_obj_set_pos(header_card_, 112, 32);
+    lv_obj_set_size(header_card_, 204, 78);
+    lv_obj_set_pos(header_card_, 106, 30);
     lv_obj_set_style_bg_color(header_card_, lv_color_hex(0x0F172A), 0);
     lv_obj_set_style_bg_opa(header_card_, LV_OPA_90, 0);
     lv_obj_set_style_radius(header_card_, 16, 0);
@@ -78,20 +78,23 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     lv_obj_clear_flag(header_card_, LV_OBJ_FLAG_SCROLLABLE);
 
     greeting_title_ = lv_label_create(header_card_);
+    lv_obj_set_style_text_font(greeting_title_, GetBuddyFont(), 0);
     lv_label_set_text(greeting_title_, "Chào Minh!");
     lv_obj_set_style_text_color(greeting_title_, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_width(greeting_title_, 176);
+    lv_obj_set_width(greeting_title_, 184);
 
     greeting_sub_ = lv_label_create(header_card_);
-    lv_label_set_text(greeting_sub_, "Hôm nay con có 3 việc");
+    lv_obj_set_style_text_font(greeting_sub_, GetBuddyFont(), 0);
+    lv_label_set_long_mode(greeting_sub_, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(greeting_sub_, "Hôm nay có 3 việc");
     lv_obj_set_style_text_color(greeting_sub_, lv_color_hex(0x38BDF8), 0);
-    lv_obj_set_width(greeting_sub_, 176);
+    lv_obj_set_width(greeting_sub_, 184);
 
-    // 4. Right Column - 2 Action Buttons [XEM VIỆC] & [BUDDY ƠI] (Pos: 112, 116, Size: 196x88)
+    // 4. Right Column - 2 Action Buttons [XEM VIỆC] & [BUDDY ƠI] (Pos: 106, 114, Size: 204x90)
     btn_container_ = lv_obj_create(container_);
     lv_obj_remove_style_all(btn_container_);
-    lv_obj_set_size(btn_container_, 196, 88);
-    lv_obj_set_pos(btn_container_, 112, 116);
+    lv_obj_set_size(btn_container_, 204, 90);
+    lv_obj_set_pos(btn_container_, 106, 114);
     lv_obj_set_flex_flow(btn_container_, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container_, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(btn_container_, LV_OBJ_FLAG_SCROLLABLE);
@@ -99,7 +102,7 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     // 4.1 Nút 1: [XEM VIỆC] (Royal Blue Glow)
     btn_view_quests_ = lv_btn_create(btn_container_);
     lv_obj_remove_style_all(btn_view_quests_);
-    lv_obj_set_size(btn_view_quests_, 94, 86);
+    lv_obj_set_size(btn_view_quests_, 98, 88);
     lv_obj_set_style_bg_color(btn_view_quests_, lv_color_hex(0x2563EB), 0);
     lv_obj_set_style_bg_opa(btn_view_quests_, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btn_view_quests_, lv_color_hex(0x1D4ED8), LV_STATE_PRESSED);
@@ -126,7 +129,7 @@ void BuddyHomeScreen::Create(lv_obj_t* parent) {
     // 4.2 Nút 2: [BUDDY ƠI] (Emerald Green Glow)
     btn_talk_buddy_ = lv_btn_create(btn_container_);
     lv_obj_remove_style_all(btn_talk_buddy_);
-    lv_obj_set_size(btn_talk_buddy_, 94, 86);
+    lv_obj_set_size(btn_talk_buddy_, 98, 88);
     lv_obj_set_style_bg_color(btn_talk_buddy_, lv_color_hex(0x16A34A), 0);
     lv_obj_set_style_bg_opa(btn_talk_buddy_, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(btn_talk_buddy_, lv_color_hex(0x15803D), LV_STATE_PRESSED);
@@ -204,11 +207,16 @@ void BuddyHomeScreen::SetGreeting(const std::string& child_name, int total_quest
     total_quests_ = total_quests;
     if (greeting_title_) {
         std::string title = "Chào " + child_name_ + "!";
-        lv_label_set_text(greeting_title_, SanitizeVietnamese(title).c_str());
+        lv_label_set_text(greeting_title_, title.c_str());
     }
     if (greeting_sub_) {
-        std::string sub = "Hôm nay con có " + std::to_string(total_quests_) + " việc";
-        lv_label_set_text(greeting_sub_, SanitizeVietnamese(sub).c_str());
+        std::string sub;
+        if (total_quests_ <= 0) {
+            sub = "Chưa có việc hôm nay";
+        } else {
+            sub = "Hôm nay có " + std::to_string(total_quests_) + " việc";
+        }
+        lv_label_set_text(greeting_sub_, sub.c_str());
     }
 }
 

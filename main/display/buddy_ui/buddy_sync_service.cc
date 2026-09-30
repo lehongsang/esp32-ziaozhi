@@ -183,30 +183,30 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
         quests.push_back(std::move(q));
     }
 
-    if (!quests.empty()) {
-        Application::GetInstance().Schedule([this, quests]() {
-            auto display = Board::GetInstance().GetDisplay();
-            DisplayLockGuard lock(display);
+    Application::GetInstance().Schedule([this, quests]() {
+        auto display = Board::GetInstance().GetDisplay();
+        DisplayLockGuard lock(display);
 
-            int total = quests.size();
-            int completed = 0;
-            for (const auto& q : quests) {
-                if (q.completed) completed++;
-            }
+        int total = quests.size();
+        int completed = 0;
+        for (const auto& q : quests) {
+            if (q.completed) completed++;
+        }
 
-            if (quest_screen_) {
-                quest_screen_->SetQuests(quests);
-            }
-            if (home_screen_) {
-                home_screen_->SetQuestSummary(total, completed);
-            }
+        if (quest_screen_) {
+            quest_screen_->SetQuests(quests);
+        }
+        if (home_screen_) {
+            home_screen_->SetQuestSummary(total, completed);
+        }
 
-            BuddyReminderScheduler::GetInstance().UpdateQuests(quests);
+        BuddyReminderScheduler::GetInstance().UpdateQuests(quests);
+        if (!quests.empty()) {
             std::string toast_title = "Nhiệm vụ mới";
-            std::string toast_body = quests.empty() ? "Đã cập nhật việc hôm nay" : ("Bố mẹ vừa giao: " + quests.back().title);
+            std::string toast_body = "Bố mẹ vừa giao: " + quests.back().title;
             BuddyToastOverlay::GetInstance().Show(toast_title, toast_body, ToastType::kNewQuest, 4500);
-        });
-    }
+        }
+    });
 }
 
 void BuddySyncService::HandleSavingsPayload(cJSON* root) {

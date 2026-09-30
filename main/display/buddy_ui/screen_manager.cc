@@ -191,39 +191,12 @@ void BuddyScreenManager::Initialize(lv_obj_t* root_parent) {
 }
 
 void BuddyScreenManager::CreatePageIndicators(lv_obj_t* parent) {
-    indicator_container_ = lv_obj_create(parent);
-    lv_obj_remove_style_all(indicator_container_);
-    lv_obj_add_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN); // Hidden for ultra-clean UI
-    lv_obj_set_size(indicator_container_, 96, 16);
-    lv_obj_align(indicator_container_, LV_ALIGN_BOTTOM_MID, 0, -4);
-    lv_obj_set_flex_flow(indicator_container_, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(indicator_container_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(indicator_container_, 6, 0);
-
-    for (int i = 0; i < static_cast<int>(BuddyScreenId::kScreenCount); ++i) {
-        indicator_dots_[i] = lv_obj_create(indicator_container_);
-        lv_obj_set_size(indicator_dots_[i], 6, 6);
-        lv_obj_set_style_radius(indicator_dots_[i], LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(indicator_dots_[i], lv_color_hex(0x666677), 0);
-        lv_obj_set_style_border_width(indicator_dots_[i], 0, 0);
-    }
+    // Disabled indicator dots for clean, full-screen UI without text clipping
+    indicator_container_ = nullptr;
 }
 
 void BuddyScreenManager::UpdateIndicators(int active_index) {
-    if (!indicator_container_ || lv_obj_has_flag(indicator_container_, LV_OBJ_FLAG_HIDDEN)) {
-        return;
-    }
-    for (int i = 0; i < static_cast<int>(BuddyScreenId::kScreenCount); ++i) {
-        if (indicator_dots_[i]) {
-            if (i == active_index) {
-                lv_obj_set_size(indicator_dots_[i], 14, 6);
-                lv_obj_set_style_bg_color(indicator_dots_[i], lv_color_hex(0xFFB703), 0);
-            } else {
-                lv_obj_set_size(indicator_dots_[i], 6, 6);
-                lv_obj_set_style_bg_color(indicator_dots_[i], lv_color_hex(0x555566), 0);
-            }
-        }
-    }
+    // No-op (indicators removed)
 }
 
 void BuddyScreenManager::SwitchTo(BuddyScreenId id, bool anim) {

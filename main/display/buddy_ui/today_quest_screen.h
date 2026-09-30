@@ -59,7 +59,10 @@ private:
     std::function<void(int total, int completed)> on_quests_changed_;
 
     void RenderItem(const QuestItemData& item, size_t index);
+    void RenderEmptyState();
     void UpdateSummaryHeader();
+    void LoadQuestsFromNVS();
+    void SaveQuestsToNVS();
     static void OnCardClickedCb(lv_event_t* e);
 };
 

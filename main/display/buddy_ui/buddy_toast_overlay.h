@@ -2,7 +2,9 @@
 #define BUDDY_TOAST_OVERLAY_H
 
 #include <string>
+#include <functional>
 #include <lvgl.h>
+#include "screen_types.h"
 
 enum class ToastType {
     kMessage,
@@ -18,7 +20,7 @@ public:
     static BuddyToastOverlay& GetInstance();
 
     void Initialize(lv_obj_t* root_layer);
-    void Show(const std::string& title, const std::string& body, ToastType type = ToastType::kMessage, uint32_t duration_ms = 4000);
+    void Show(const std::string& title, const std::string& body, ToastType type = ToastType::kMessage, uint32_t duration_ms = 4000, std::function<void()> on_click = nullptr);
     void Hide();
 
 private:
@@ -34,6 +36,8 @@ private:
     lv_obj_t* body_label_ = nullptr;
     lv_timer_t* hide_timer_ = nullptr;
     bool is_visible_ = false;
+    ToastType current_type_ = ToastType::kMessage;
+    std::function<void()> custom_on_click_ = nullptr;
 };
 
 #endif // BUDDY_TOAST_OVERLAY_H

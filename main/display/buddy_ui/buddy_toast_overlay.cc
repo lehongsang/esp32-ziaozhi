@@ -1,5 +1,6 @@
 #include "buddy_toast_overlay.h"
 #include "buddy_font_helper.h"
+#include "screen_manager.h"
 #include "application.h"
 #include "board.h"
 #include "display.h"
@@ -27,18 +28,21 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 
     container_ = lv_obj_create(root_layer);
     lv_obj_remove_style_all(container_);
-    // 1/3 screen height banner (76px of 240px)
-    lv_obj_set_size(container_, 304, 76);
-    lv_obj_align(container_, LV_ALIGN_TOP_MID, 0, -90); // Hidden offscreen initially
+    // Dynamic Auto-Fit width & height (304px wide, height automatically wraps content)
+    lv_obj_set_width(container_, 304);
+    lv_obj_set_height(container_, LV_SIZE_CONTENT);
+    lv_obj_set_style_min_height(container_, 52, 0);
+    lv_obj_align(container_, LV_ALIGN_TOP_MID, 0, -120); // Hidden offscreen initially
     lv_obj_set_style_bg_color(container_, lv_color_hex(0xE0F2FE), 0); // Vibrant Light Sky Blue #E0F2FE
     lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, 0); // Solid opaque
-    lv_obj_set_style_radius(container_, 18, 0);
+    lv_obj_set_style_radius(container_, 16, 0);
     lv_obj_set_style_border_color(container_, lv_color_hex(0x0284C7), 0); // Ocean Blue Border
     lv_obj_set_style_border_width(container_, 2, 0);
-    lv_obj_set_style_shadow_width(container_, 18, 0);
+    lv_obj_set_style_shadow_width(container_, 16, 0);
     lv_obj_set_style_shadow_color(container_, lv_color_hex(0x000000), 0);
     lv_obj_set_style_shadow_opa(container_, LV_OPA_60, 0);
     lv_obj_set_style_pad_hor(container_, 12, 0);
+    lv_obj_set_style_pad_ver(container_, 8, 0);
     lv_obj_set_flex_flow(container_, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(container_, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_gap(container_, 10, 0);
@@ -46,10 +50,10 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
     lv_obj_add_flag(container_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(container_, OnToastClickedCb, LV_EVENT_CLICKED, this);
 
-    // Left Prominent Icon Box (44x44)
+    // Left Prominent Icon Box (38x38)
     lv_obj_t* icon_box = lv_obj_create(container_);
     lv_obj_remove_style_all(icon_box);
-    lv_obj_set_size(icon_box, 44, 44);
+    lv_obj_set_size(icon_box, 38, 38);
     lv_obj_set_style_radius(icon_box, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(icon_box, lv_color_hex(0x0284C7), 0);
     lv_obj_set_style_bg_opa(icon_box, LV_OPA_COVER, 0);
@@ -57,16 +61,17 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 
     icon_label_ = lv_label_create(icon_box);
     lv_label_set_text(icon_label_, MATERIAL_SYMBOLS_NOTIFICATIONS);
-    lv_obj_set_style_text_font(icon_label_, &font_material_symbols_30_4, 0);
+    lv_obj_set_style_text_font(icon_label_, &font_material_symbols_20_4, 0);
     lv_obj_set_style_text_color(icon_label_, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(icon_label_);
 
-    // Text Content Column
+    // Text Content Column (Auto-fitting height)
     lv_obj_t* text_col = lv_obj_create(container_);
     lv_obj_remove_style_all(text_col);
     lv_obj_set_flex_flow(text_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(text_col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_flex_grow(text_col, 1);
+    lv_obj_set_height(text_col, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_gap(text_col, 2, 0);
     lv_obj_clear_flag(text_col, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -77,16 +82,19 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 
     body_label_ = lv_label_create(text_col);
     lv_obj_set_style_text_font(body_label_, GetBuddyFont(), 0);
-    lv_obj_set_width(body_label_, 226);
+    lv_obj_set_width(body_label_, 230);
     lv_label_set_long_mode(body_label_, LV_LABEL_LONG_WRAP);
     lv_label_set_text(body_label_, "Nội dung tin nhắn");
     lv_obj_set_style_text_color(body_label_, lv_color_hex(0x0F172A), 0); // Bold dark navy text for max readability
 
-    ESP_LOGI(TAG, "BuddyToastOverlay initialized with 1/3 screen height and vibrant theme");
+    ESP_LOGI(TAG, "BuddyToastOverlay initialized with dynamic auto-fit height and vibrant theme");
 }
 
-void BuddyToastOverlay::Show(const std::string& title, const std::string& body, ToastType type, uint32_t duration_ms) {
+void BuddyToastOverlay::Show(const std::string& title, const std::string& body, ToastType type, uint32_t duration_ms, std::function<void()> on_click) {
     if (!container_) return;
+
+    current_type_ = type;
+    custom_on_click_ = on_click;
 
     auto display = Board::GetInstance().GetDisplay();
     DisplayLockGuard lock(display);
@@ -153,7 +161,7 @@ void BuddyToastOverlay::Show(const std::string& title, const std::string& body, 
     lv_anim_init(&a);
     lv_anim_set_var(&a, container_);
     lv_anim_set_time(&a, 350);
-    lv_anim_set_values(&a, -90, 8);
+    lv_anim_set_values(&a, -140, 8);
     lv_anim_set_path_cb(&a, lv_anim_path_overshoot);
     lv_anim_set_custom_exec_cb(&a, [](lv_anim_t* anim, int32_t val) {
         auto* obj = static_cast<lv_obj_t*>(anim->var);
@@ -187,7 +195,7 @@ void BuddyToastOverlay::Hide() {
     lv_anim_init(&a);
     lv_anim_set_var(&a, container_);
     lv_anim_set_time(&a, 250);
-    lv_anim_set_values(&a, lv_obj_get_y(container_), -90);
+    lv_anim_set_values(&a, lv_obj_get_y(container_), -140);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in);
     lv_anim_set_custom_exec_cb(&a, [](lv_anim_t* anim, int32_t val) {
         auto* obj = static_cast<lv_obj_t*>(anim->var);
@@ -203,8 +211,33 @@ void BuddyToastOverlay::Hide() {
 
 void BuddyToastOverlay::OnToastClickedCb(lv_event_t* e) {
     auto* self = static_cast<BuddyToastOverlay*>(lv_event_get_user_data(e));
-    if (self) {
-        self->Hide();
+    if (!self) return;
+
+    std::function<void()> callback = self->custom_on_click_;
+    ToastType type = self->current_type_;
+    self->Hide();
+
+    if (callback) {
+        callback();
+    } else {
+        // Automatic screen navigation based on notification type
+        switch (type) {
+            case ToastType::kMessage:
+                ESP_LOGI(TAG, "Toast clicked -> Navigating to Family Moment Screen");
+                BuddyScreenManager::GetInstance().SwitchTo(BuddyScreenId::kScreenFamily);
+                break;
+            case ToastType::kNewQuest:
+            case ToastType::kReminder:
+                ESP_LOGI(TAG, "Toast clicked -> Navigating to Today Quest Screen");
+                BuddyScreenManager::GetInstance().SwitchTo(BuddyScreenId::kScreenQuest);
+                break;
+            case ToastType::kReward:
+                ESP_LOGI(TAG, "Toast clicked -> Navigating to Savings Goal Screen");
+                BuddyScreenManager::GetInstance().SwitchTo(BuddyScreenId::kScreenSavings);
+                break;
+            default:
+                break;
+        }
     }
 }
 

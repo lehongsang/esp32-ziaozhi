@@ -1,6 +1,7 @@
 #include "today_quest_screen.h"
 #include "buddy_sync_service.h"
 #include "buddy_font_helper.h"
+#include "settings.h"
 #include <material_symbols.h>
 #include <esp_log.h>
 
@@ -33,13 +34,13 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
 
     progress_ratio_label_ = lv_label_create(header_progress_card_);
     lv_obj_set_style_text_font(progress_ratio_label_, GetBuddyFont(), 0);
-    lv_label_set_text(progress_ratio_label_, "2/3");
+    lv_label_set_text(progress_ratio_label_, "0/0");
     lv_obj_set_style_text_color(progress_ratio_label_, lv_color_hex(0xFFFFFF), 0);
 
     progress_bar_ = lv_bar_create(header_progress_card_);
     lv_obj_set_size(progress_bar_, 170, 7);
     lv_bar_set_range(progress_bar_, 0, 100);
-    lv_bar_set_value(progress_bar_, 67, LV_ANIM_OFF);
+    lv_bar_set_value(progress_bar_, 0, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(progress_bar_, lv_color_hex(0x27272A), LV_PART_MAIN);
     lv_obj_set_style_bg_color(progress_bar_, lv_color_hex(0x38BDF8), LV_PART_INDICATOR);
     lv_obj_set_style_radius(progress_bar_, 4, LV_PART_MAIN);
@@ -81,7 +82,7 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
 
     footer_label_ = lv_label_create(footer_card_);
     lv_obj_set_style_text_font(footer_label_, GetBuddyFont(), 0);
-    lv_label_set_text(footer_label_, "Còn 1 việc nữa là\ntrọn vẹn hôm nay!");
+    lv_label_set_text(footer_label_, "Sẵn sàng cho ngày mới\ncùng Buddy! ✨");
     lv_obj_set_style_text_color(footer_label_, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_align(footer_label_, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -107,15 +108,11 @@ void TodayQuestScreen::Create(lv_obj_t* parent) {
         }
     });
 
-    // Default items conforming to Mockup (No hours text)
-    current_quests_ = {
-        {"q_math", "Học Toán", "", "", "", 20, 1, "math", true},
-        {"q_read", "Đọc sách 15 phút", "", "", "", 15, 1, "read", true},
-        {"q_pack", "Chuẩn bị cặp", "", "", "", 10, 1, "pack", false}
-    };
+    // 6. Load saved quests from NVS (No hardcoded mock defaults)
+    LoadQuestsFromNVS();
     SetQuests(current_quests_);
 
-    ESP_LOGI(TAG, "TodayQuestScreen initialized with vibrant high-contrast solid icon badges");
+    ESP_LOGI(TAG, "TodayQuestScreen initialized with dynamic backend & NVS quest sync (Loaded: %d)", (int)current_quests_.size());
 }
 
 void TodayQuestScreen::SetQuests(const std::vector<QuestItemData>& quests) {
@@ -123,11 +120,54 @@ void TodayQuestScreen::SetQuests(const std::vector<QuestItemData>& quests) {
     if (!quest_list_) return;
     lv_obj_clean(quest_list_);
 
-    for (size_t i = 0; i < current_quests_.size(); ++i) {
-        RenderItem(current_quests_[i], i);
+    if (current_quests_.empty()) {
+        RenderEmptyState();
+    } else {
+        for (size_t i = 0; i < current_quests_.size(); ++i) {
+            RenderItem(current_quests_[i], i);
+        }
     }
 
     UpdateSummaryHeader();
+    SaveQuestsToNVS();
+}
+
+void TodayQuestScreen::RenderEmptyState() {
+    lv_obj_t* empty_card = lv_obj_create(quest_list_);
+    lv_obj_remove_style_all(empty_card);
+    lv_obj_set_size(empty_card, 292, 142);
+    lv_obj_set_style_bg_color(empty_card, lv_color_hex(0x18181B), 0);
+    lv_obj_set_style_bg_opa(empty_card, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(empty_card, 16, 0);
+    lv_obj_set_flex_flow(empty_card, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(empty_card, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(empty_card, 8, 0);
+    lv_obj_clear_flag(empty_card, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* icon_circle = lv_obj_create(empty_card);
+    lv_obj_remove_style_all(icon_circle);
+    lv_obj_set_size(icon_circle, 42, 42);
+    lv_obj_set_style_bg_color(icon_circle, lv_color_hex(0x0284C7), 0);
+    lv_obj_set_style_bg_opa(icon_circle, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(icon_circle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_clear_flag(icon_circle, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t* icon = lv_label_create(icon_circle);
+    lv_label_set_text(icon, MATERIAL_SYMBOLS_CHECK_CIRCLE);
+    lv_obj_set_style_text_font(icon, &font_material_symbols_20_4, 0);
+    lv_obj_set_style_text_color(icon, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_center(icon);
+
+    lv_obj_t* title = lv_label_create(empty_card);
+    lv_obj_set_style_text_font(title, GetBuddyFont(), 0);
+    lv_label_set_text(title, "Chưa có nhiệm vụ hôm nay");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+
+    lv_obj_t* sub = lv_label_create(empty_card);
+    lv_obj_set_style_text_font(sub, GetBuddyFont(), 0);
+    lv_label_set_text(sub, "Bố Mẹ hãy giao nhiệm vụ từ\nứng dụng để cùng bé thực hiện! ✨");
+    lv_obj_set_style_text_color(sub, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
 }
 
 void TodayQuestScreen::UpdateSummaryHeader() {
@@ -279,4 +319,47 @@ void TodayQuestScreen::OnCardClickedCb(lv_event_t* e) {
 
 void TodayQuestScreen::OnQuestSelected(std::function<void(const std::string& quest_id)> callback) {
     on_quest_selected_ = callback;
+}
+
+void TodayQuestScreen::SaveQuestsToNVS() {
+    Settings settings("buddy_quests", true);
+    settings.SetInt("count", (int)current_quests_.size());
+    for (size_t i = 0; i < current_quests_.size(); ++i) {
+        std::string prefix = "q_" + std::to_string(i) + "_";
+        settings.SetString(prefix + "id", current_quests_[i].id);
+        settings.SetString(prefix + "title", current_quests_[i].title);
+        settings.SetString(prefix + "prog", current_quests_[i].progress_text);
+        settings.SetString(prefix + "sched", current_quests_[i].scheduled_time);
+        settings.SetString(prefix + "start", current_quests_[i].start_time);
+        settings.SetInt(prefix + "dur", current_quests_[i].duration);
+        settings.SetInt(prefix + "stars", current_quests_[i].reward_stars);
+        settings.SetString(prefix + "cat", current_quests_[i].category);
+        settings.SetInt(prefix + "comp", current_quests_[i].completed ? 1 : 0);
+    }
+}
+
+void TodayQuestScreen::LoadQuestsFromNVS() {
+    Settings settings("buddy_quests", false);
+    int count = settings.GetInt("count", 0);
+    if (count <= 0) {
+        current_quests_.clear();
+        return;
+    }
+
+    current_quests_.clear();
+    for (int i = 0; i < count; ++i) {
+        std::string prefix = "q_" + std::to_string(i) + "_";
+        QuestItemData q;
+        q.id = settings.GetString(prefix + "id", "q_" + std::to_string(i));
+        q.title = settings.GetString(prefix + "title", "");
+        if (q.title.empty()) continue;
+        q.progress_text = settings.GetString(prefix + "prog", "");
+        q.scheduled_time = settings.GetString(prefix + "sched", "");
+        q.start_time = settings.GetString(prefix + "start", "");
+        q.duration = settings.GetInt(prefix + "dur", 20);
+        q.reward_stars = settings.GetInt(prefix + "stars", 1);
+        q.category = settings.GetString(prefix + "cat", "habit");
+        q.completed = settings.GetInt(prefix + "comp", 0) == 1;
+        current_quests_.push_back(std::move(q));
+    }
 }
