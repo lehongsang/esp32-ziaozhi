@@ -1,6 +1,7 @@
 #include "buddy_toast_overlay.h"
 #include "buddy_font_helper.h"
 #include "application.h"
+#include "board.h"
 #include "assets/lang_config.h"
 #include <material_symbols.h>
 #include <esp_log.h>
@@ -85,6 +86,9 @@ void BuddyToastOverlay::Initialize(lv_obj_t* root_layer) {
 
 void BuddyToastOverlay::Show(const std::string& title, const std::string& body, ToastType type, uint32_t duration_ms) {
     if (!container_) return;
+
+    auto display = Board::GetInstance().GetDisplay();
+    DisplayLockGuard lock(display);
 
     // Play pleasant popup audio chime
     Application::GetInstance().PlaySound(Lang::Sounds::OGG_POPUP);
@@ -174,6 +178,9 @@ void BuddyToastOverlay::Show(const std::string& title, const std::string& body, 
 
 void BuddyToastOverlay::Hide() {
     if (!is_visible_ || !container_) return;
+
+    auto display = Board::GetInstance().GetDisplay();
+    DisplayLockGuard lock(display);
 
     lv_anim_t a;
     lv_anim_init(&a);

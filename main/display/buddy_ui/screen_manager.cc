@@ -216,6 +216,9 @@ void BuddyScreenManager::UpdateIndicators(int active_index) {
 
 void BuddyScreenManager::SwitchTo(BuddyScreenId id, bool anim) {
     if (!tileview_) return;
+    auto display = Board::GetInstance().GetDisplay();
+    DisplayLockGuard lock(display);
+
     uint32_t idx = static_cast<uint32_t>(id);
     if (idx < static_cast<uint32_t>(BuddyScreenId::kScreenCount)) {
         lv_tileview_set_tile_by_index(tileview_, idx, 0, anim ? LV_ANIM_ON : LV_ANIM_OFF);

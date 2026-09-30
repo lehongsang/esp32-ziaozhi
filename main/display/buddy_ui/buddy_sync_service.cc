@@ -184,6 +184,9 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
 
     if (!quests.empty()) {
         Application::GetInstance().Schedule([this, quests]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+
             int total = quests.size();
             int completed = 0;
             for (const auto& q : quests) {
@@ -224,6 +227,9 @@ void BuddySyncService::HandleSavingsPayload(cJSON* root) {
 
     if (savings_screen_) {
         Application::GetInstance().Schedule([this, goal_type, goal_name, current_amount, target_amount, currency]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+
             if (savings_screen_) {
                 savings_screen_->SetGoal(goal_type, goal_name, current_amount, target_amount, currency);
             }
@@ -245,6 +251,9 @@ void BuddySyncService::HandleFamilyMessagePayload(cJSON* root) {
 
     if (family_screen_) {
         Application::GetInstance().Schedule([this, sender, message, timestamp]() {
+            auto display = Board::GetInstance().GetDisplay();
+            DisplayLockGuard lock(display);
+
             if (family_screen_) {
                 family_screen_->SetMessage(sender, message, timestamp);
             }
