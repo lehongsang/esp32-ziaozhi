@@ -186,43 +186,16 @@ void WifiBoard::StartWifiConfigMode() {
 }
 
 void WifiBoard::EnterWifiConfigMode() {
-    ESP_LOGI(TAG, "EnterWifiConfigMode called");
+    ESP_LOGI(TAG, "EnterWifiConfigMode called, switching to AP Config Mode");
 
     auto& app = Application::GetInstance();
-    auto state = app.GetDeviceState();
+    app.ResetProtocol();
+    app.SetDeviceState(kDeviceStateWifiConfiguring);
 
-    if (state == kDeviceStateSpeaking || state == kDeviceStateNotifying ||
-        state == kDeviceStateListening || state == kDeviceStateIdle) {
-        // Reset protocol (close audio channel, reset protocol)
-        Application::GetInstance().ResetProtocol();
-
-        xTaskCreate([](void* arg) {
-            auto* board = static_cast<WifiBoard*>(arg);
-
-            // Wait for 1 second to allow speaking to finish gracefully
-            vTaskDelay(pdMS_TO_TICKS(1000));
-
-            // Stop any ongoing connection attempt
-            esp_timer_stop(board->connect_timer_);
-            WifiManager::GetInstance().StopStation();
-
-            // Enter config mode
-            board->StartWifiConfigMode();
-
-            vTaskDelete(NULL);
-        }, "wifi_cfg_delay", 4096, this, 2, NULL);
-        return;
+    if (connect_timer_) {
+        esp_timer_stop(connect_timer_);
     }
-
-    if (state != kDeviceStateStarting) {
-        ESP_LOGE(TAG, "EnterWifiConfigMode called but device state is not starting or speaking, device state: %d", state);
-        return;
-    }
-
-    // Stop any ongoing connection attempt
-    esp_timer_stop(connect_timer_);
     WifiManager::GetInstance().StopStation();
-
     StartWifiConfigMode();
 }
 
