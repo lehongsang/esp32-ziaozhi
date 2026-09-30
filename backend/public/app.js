@@ -89,7 +89,10 @@ function renderQuests(quests) {
                 <button type="button" class="quest-btn-check" onclick="toggleQuest('${q.id}')" title="Đánh dấu hoàn thành">
                     ${q.completed ? '✓' : ''}
                 </button>
-                <span style="${q.completed ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${q.title}</span>
+                <div>
+                    <span style="${q.completed ? 'text-decoration: line-through; opacity: 0.7;' : ''}; font-weight:600;">${q.title}</span>
+                    ${q.scheduled_time ? `<div style="font-size:11px; color:#F59E0B; margin-top:2px;">⏰ Hạn: ${q.scheduled_time} (Nhắc trước ${q.remind_before || 30}p)</div>` : ''}
+                </div>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
                 <span style="color:#94A3B8; font-size:12px;">${q.completed ? 'Đã xong' : (q.progress_text || '')}</span>
@@ -221,7 +224,8 @@ async function toggleQuest(questId) {
 document.getElementById('addQuestForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('questTitleInput').value.trim();
-    const prog = document.getElementById('questProgInput').value.trim() || '0/1';
+    const scheduledTime = document.getElementById('questTimeInput') ? document.getElementById('questTimeInput').value : '15:00';
+    const remindBefore = document.getElementById('questRemindInput') ? parseInt(document.getElementById('questRemindInput').value, 10) : 30;
     if (!title) return;
 
     const id = 'q_' + Date.now();
@@ -229,13 +233,21 @@ document.getElementById('addQuestForm').addEventListener('submit', async (e) => 
         const res = await fetch(`/api/device/${DEVICE_ID}/quests`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, title, progress_text: prog })
+            body: JSON.stringify({ 
+                id, 
+                title, 
+                scheduled_time: scheduledTime,
+                remind_before: remindBefore,
+                duration: 20,
+                reward_stars: 1,
+                category: 'habit'
+            })
         });
         const data = await res.json();
         if (data.success) {
             renderQuests(data.quests);
             document.getElementById('questTitleInput').value = '';
-            log(`[Nhiệm Vụ] Đã giao nhiệm vụ mới: "${title}"`, 'success');
+            log(`[Nhiệm Vụ] Đã giao: "${title}" (Hạn: ${scheduledTime}, Nhắc trước: ${remindBefore}p)`, 'success');
         }
     } catch (err) {
         log('Lỗi giao nhiệm vụ: ' + err.message, 'amber');
@@ -244,7 +256,6 @@ document.getElementById('addQuestForm').addEventListener('submit', async (e) => 
 
 function setQuickQuest(id, title, prog) {
     document.getElementById('questTitleInput').value = title;
-    document.getElementById('questProgInput').value = prog;
 }
 
 // 5. Connect SSE Real-time Stream

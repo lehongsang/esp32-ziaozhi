@@ -168,6 +168,7 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
         cJSON* duration = cJSON_GetObjectItem(item, "duration");
         cJSON* stars = cJSON_GetObjectItem(item, "reward_stars");
         cJSON* category = cJSON_GetObjectItem(item, "category");
+        cJSON* remind = cJSON_GetObjectItem(item, "remind_before");
         cJSON* completed = cJSON_GetObjectItem(item, "completed");
 
         q.id = (id && cJSON_IsString(id)) ? id->valuestring : ("quest_" + std::to_string(i));
@@ -178,6 +179,7 @@ void BuddySyncService::HandleQuestsPayload(cJSON* root) {
         q.duration = (duration && cJSON_IsNumber(duration)) ? duration->valueint : 20;
         q.reward_stars = (stars && cJSON_IsNumber(stars)) ? stars->valueint : 1;
         q.category = (category && cJSON_IsString(category)) ? category->valuestring : "habit";
+        q.remind_before = (remind && cJSON_IsNumber(remind)) ? remind->valueint : 30;
         q.completed = (completed && cJSON_IsTrue(completed));
 
         quests.push_back(std::move(q));

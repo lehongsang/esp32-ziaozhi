@@ -69,12 +69,27 @@
                     </div>
 
                     <div class="input-group">
-                        <input type="text" id="questTitleInput" placeholder="Nhập tên việc cần giao (VD: Ôn từ vựng tiếng Anh)..." required>
-                        <input type="text" id="questProgInput" placeholder="Số lần (0/1)" value="0/1" class="mini-input">
+                        <input type="text" id="questTitleInput" placeholder="Nhập tên việc cần giao (VD: Học Toán, Đọc sách, Dọn phòng)..." required>
+                    </div>
+
+                    <div class="input-group-row" style="display:flex; gap:10px; margin-top:8px; margin-bottom:12px;">
+                        <div style="flex:1;">
+                            <label style="font-size:12px; color:#94A3B8; display:block; margin-bottom:4px;">⏰ Hạn chót hoàn thành:</label>
+                            <input type="time" id="questTimeInput" value="15:00" style="width:100%; padding:8px 12px; background:#1E293B; color:#FFF; border:1px solid #334155; border-radius:8px; font-size:14px;">
+                        </div>
+                        <div style="flex:1.2;">
+                            <label style="font-size:12px; color:#94A3B8; display:block; margin-bottom:4px;">🔔 Chuông nhắc trước:</label>
+                            <select id="questRemindInput" style="width:100%; padding:8px 12px; background:#1E293B; color:#FFF; border:1px solid #334155; border-radius:8px; font-size:14px;">
+                                <option value="30" selected>Nhắc trước 30 phút</option>
+                                <option value="15">Nhắc trước 15 phút</option>
+                                <option value="45">Nhắc trước 45 phút</option>
+                                <option value="0">Báo đúng giờ hạn chót</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn btn-emerald" id="btnAddQuest">
-                        <span>Giao Việc Xuống Thiết Bị</span>
+                        <span>Giao Việc & Đặt Chuông Báo</span>
                         <span class="btn-arrow">➔</span>
                     </button>
                 </form>

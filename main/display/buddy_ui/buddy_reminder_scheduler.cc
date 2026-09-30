@@ -3,6 +3,7 @@
 #include <ctime>
 #include "application.h"
 #include "buddy_toast_overlay.h"
+#include "assets/lang_config.h"
 
 #define TAG "BuddyReminderScheduler"
 
@@ -73,12 +74,8 @@ void BuddyReminderScheduler::CheckReminders() {
         int diff = start_min - current_min;
         int trigger_slot = -1;
 
-        if (diff == 60) {
-            trigger_slot = 60;
-        } else if (diff == 30) {
-            trigger_slot = 30;
-        } else if (diff == 15) {
-            trigger_slot = 15;
+        if (diff == q.remind_before && q.remind_before > 0) {
+            trigger_slot = q.remind_before;
         } else if (diff == 0) {
             trigger_slot = 0;
         }
@@ -87,17 +84,21 @@ void BuddyReminderScheduler::CheckReminders() {
             std::string key = q.id + "_" + std::to_string(trigger_slot);
             if (triggered_reminders_.find(key) == triggered_reminders_.end()) {
                 triggered_reminders_.insert(key);
-                ESP_LOGI(TAG, "Triggering reminder for '%s' (%s) at %d min before", q.title.c_str(), q.id.c_str(), trigger_slot);
+                ESP_LOGI(TAG, "Triggering alarm reminder for '%s' (%s) at %d min before deadline (%s)",
+                         q.title.c_str(), q.id.c_str(), trigger_slot, q.scheduled_time.c_str());
 
                 Application::GetInstance().Schedule([this, q, trigger_slot]() {
+                    // Play alarm audio chime
+                    Application::GetInstance().PlaySound(Lang::Sounds::OGG_POPUP);
+
                     if (trigger_slot == 0) {
-                        std::string title = "Đến giờ rồi!";
-                        std::string body = "Đến giờ " + q.title + " (" + q.scheduled_time + ")";
-                        BuddyToastOverlay::GetInstance().Show(title, body, ToastType::kReminder, 8000);
+                        std::string title = "⏰ Đã Đến Hạn Làm Bài!";
+                        std::string body = "Đến hạn " + q.title + " rồi con ơi! Bấm để làm ngay! ✨";
+                        BuddyToastOverlay::GetInstance().Show(title, body, ToastType::kReminder, 10000);
                     } else {
-                        std::string title = "Nhắc việc sắp tới";
-                        std::string body = "Còn " + std::to_string(trigger_slot) + " phút nữa là đến giờ " + q.title;
-                        BuddyToastOverlay::GetInstance().Show(title, body, ToastType::kReminder, 5000);
+                        std::string title = "⏰ Sắp Đến Giờ Làm Bài!";
+                        std::string body = "Con nhớ làm " + q.title + " trước " + q.scheduled_time + " nhé! (Còn " + std::to_string(trigger_slot) + "p)";
+                        BuddyToastOverlay::GetInstance().Show(title, body, ToastType::kReminder, 8000);
                     }
 
                     if (on_trigger_reminder_) {

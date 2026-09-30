@@ -334,6 +334,7 @@ void TodayQuestScreen::SaveQuestsToNVS() {
         settings.SetInt(prefix + "dur", current_quests_[i].duration);
         settings.SetInt(prefix + "stars", current_quests_[i].reward_stars);
         settings.SetString(prefix + "cat", current_quests_[i].category);
+        settings.SetInt(prefix + "remind", current_quests_[i].remind_before);
         settings.SetInt(prefix + "comp", current_quests_[i].completed ? 1 : 0);
     }
 }
@@ -359,6 +360,7 @@ void TodayQuestScreen::LoadQuestsFromNVS() {
         q.duration = settings.GetInt(prefix + "dur", 20);
         q.reward_stars = settings.GetInt(prefix + "stars", 1);
         q.category = settings.GetString(prefix + "cat", "habit");
+        q.remind_before = settings.GetInt(prefix + "remind", 30);
         q.completed = settings.GetInt(prefix + "comp", 0) == 1;
         current_quests_.push_back(std::move(q));
     }

@@ -59,12 +59,12 @@ router.get('/device/:id/quests', (req, res) => {
 
 router.post('/device/:id/quests', (req, res) => {
     const deviceId = req.params.id || 'default';
-    const { id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category } = req.body;
+    const { id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, remind_before } = req.body;
     if (!id || !title) return res.status(400).json({ error: 'Missing id or title' });
 
-    db.run(`INSERT OR REPLACE INTO quests (id, device_id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-        [id, deviceId, title, progress_text || '', scheduled_time || '', start_time || '', duration || 20, reward_stars || 1, category || 'habit'], (err) => {
+    db.run(`INSERT OR REPLACE INTO quests (id, device_id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, remind_before, completed) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        [id, deviceId, title, progress_text || '', scheduled_time || '', start_time || '', duration || 20, reward_stars || 1, category || 'habit', remind_before !== undefined ? remind_before : 30], (err) => {
             if (err) return res.status(500).json({ error: err.message });
 
             // Fetch full list and push down to device via MQTT

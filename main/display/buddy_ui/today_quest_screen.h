@@ -19,6 +19,7 @@ struct QuestItemData {
     int duration = 20;
     int reward_stars = 1;
     std::string category = "habit";
+    int remind_before = 30; // Minutes before deadline to sound alarm
     bool completed = false;
 };
 

@@ -41,6 +41,7 @@ function initTables() {
             duration INTEGER DEFAULT 20,
             reward_stars INTEGER DEFAULT 1,
             category TEXT DEFAULT 'habit',
+            remind_before INTEGER DEFAULT 30,
             completed INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
@@ -51,7 +52,8 @@ function initTables() {
             `ALTER TABLE quests ADD COLUMN start_time TEXT DEFAULT ''`,
             `ALTER TABLE quests ADD COLUMN duration INTEGER DEFAULT 20`,
             `ALTER TABLE quests ADD COLUMN reward_stars INTEGER DEFAULT 1`,
-            `ALTER TABLE quests ADD COLUMN category TEXT DEFAULT 'habit'`
+            `ALTER TABLE quests ADD COLUMN category TEXT DEFAULT 'habit'`,
+            `ALTER TABLE quests ADD COLUMN remind_before INTEGER DEFAULT 30`
         ];
         columnsToAdd.forEach(sql => {
             db.run(sql, () => {}); // Ignore error if column exists
