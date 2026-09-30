@@ -91,6 +91,29 @@ router.post('/device/:id/quests/:questId/toggle', (req, res) => {
     });
 });
 
+router.delete('/device/:id/quests/:questId', (req, res) => {
+    const deviceId = req.params.id || 'default';
+    const questId = req.params.questId;
+
+    db.run(`DELETE FROM quests WHERE id = ? AND device_id = ?`, [questId, deviceId], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        db.all(`SELECT * FROM quests WHERE device_id = ? ORDER BY id ASC`, [deviceId], (err, allQuests) => {
+            publishToDevice(deviceId, 'quests/set', { quests: allQuests || [] });
+            res.json({ success: true, quests: allQuests || [] });
+        });
+    });
+});
+
+router.delete('/device/:id/quests', (req, res) => {
+    const deviceId = req.params.id || 'default';
+
+    db.run(`DELETE FROM quests WHERE device_id = ?`, [deviceId], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        publishToDevice(deviceId, 'quests/set', { quests: [] });
+        res.json({ success: true, quests: [] });
+    });
+});
+
 // 4. Savings APIs (Màn 4)
 router.get('/device/:id/savings', (req, res) => {
     const deviceId = req.params.id || 'default';

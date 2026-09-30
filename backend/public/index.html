@@ -48,8 +48,11 @@
                 </div>
 
                 <div class="quest-summary-bar" id="questSummaryBar">
-                    <span>Danh sách việc cần làm:</span>
-                    <span class="quest-count" id="questCountBadge">3 việc</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span>Danh sách việc cần làm:</span>
+                        <span class="quest-count" id="questCountBadge">3 việc</span>
+                    </div>
+                    <button type="button" class="btn-clear-all" onclick="clearAllQuests()" title="Xóa tất cả danh sách việc cũ">🗑️ Xóa hết việc cũ</button>
                 </div>
 
                 <div class="quest-list-container" id="questListContainer">

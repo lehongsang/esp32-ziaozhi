@@ -128,11 +128,11 @@ void BuddySyncService::HandleIncomingMqtt(const std::string& topic, const std::s
         return;
     }
 
-    if (topic.find("/quests/set") != std::string::npos) {
+    if (topic.find("/quests/set") != std::string::npos || cJSON_GetObjectItem(root, "quests") != nullptr || cJSON_IsArray(root)) {
         HandleQuestsPayload(root);
-    } else if (topic.find("/savings/set") != std::string::npos) {
+    } else if (topic.find("/savings/set") != std::string::npos || cJSON_GetObjectItem(root, "savings") != nullptr || cJSON_GetObjectItem(root, "target_amount") != nullptr) {
         HandleSavingsPayload(root);
-    } else if (topic.find("/family/message") != std::string::npos) {
+    } else if (topic.find("/family/message") != std::string::npos || cJSON_GetObjectItem(root, "message") != nullptr || cJSON_GetObjectItem(root, "type") != nullptr) {
         HandleFamilyMessagePayload(root);
     }
 

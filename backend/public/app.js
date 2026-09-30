@@ -75,6 +75,9 @@ function renderSavings(savings) {
 
 function renderQuests(quests) {
     const container = document.getElementById('questListContainer');
+    const badge = document.getElementById('questCountBadge');
+    if (badge) badge.innerText = `${quests ? quests.length : 0} việc`;
+
     if (!quests || quests.length === 0) {
         container.innerHTML = '<p class="placeholder-text">Chưa có nhiệm vụ nào hôm nay</p>';
         return;
@@ -83,14 +86,44 @@ function renderQuests(quests) {
     container.innerHTML = quests.map(q => `
         <div class="quest-item ${q.completed ? 'completed' : ''}">
             <div style="display:flex; align-items:center; gap:8px;">
-                <button type="button" class="quest-btn-check" onclick="toggleQuest('${q.id}')">
+                <button type="button" class="quest-btn-check" onclick="toggleQuest('${q.id}')" title="Đánh dấu hoàn thành">
                     ${q.completed ? '✓' : ''}
                 </button>
-                <span>${q.title}</span>
+                <span style="${q.completed ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${q.title}</span>
             </div>
-            <span style="color:#94A3B8; font-size:12px;">${q.completed ? 'Đã xong' : (q.progress_text || '')}</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="color:#94A3B8; font-size:12px;">${q.completed ? 'Đã xong' : (q.progress_text || '')}</span>
+                <button type="button" class="btn-del-quest" onclick="deleteQuest('${q.id}')" title="Xóa việc này">🗑️</button>
+            </div>
         </div>
     `).join('');
+}
+
+async function deleteQuest(questId) {
+    try {
+        const res = await fetch(`/api/device/${DEVICE_ID}/quests/${questId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            renderQuests(data.quests);
+            log(`[Nhiệm Vụ] Đã xóa nhiệm vụ thành công`, 'success');
+        }
+    } catch (err) {
+        log('Lỗi xóa nhiệm vụ: ' + err.message, 'amber');
+    }
+}
+
+async function clearAllQuests() {
+    if (!confirm('Bạn có chắc muốn xóa TOÀN BỘ danh sách nhiệm vụ cũ không?')) return;
+    try {
+        const res = await fetch(`/api/device/${DEVICE_ID}/quests`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            renderQuests(data.quests);
+            log(`[Nhiệm Vụ] Đã xóa sạch toàn bộ danh sách việc cũ!`, 'success');
+        }
+    } catch (err) {
+        log('Lỗi xóa danh sách: ' + err.message, 'amber');
+    }
 }
 
 // 2. Actions: Family Message
