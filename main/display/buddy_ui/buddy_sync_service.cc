@@ -11,6 +11,7 @@
 #include "settings.h"
 #include "buddy_toast_overlay.h"
 #include "buddy_call_overlay.h"
+#include "buddy_call_audio.h"
 #include "buddy_reminder_scheduler.h"
 
 #define TAG "BuddySyncService"
@@ -53,6 +54,20 @@ void BuddySyncService::Initialize(BuddyHomeScreen* home_screen, TodayQuestScreen
     savings_screen_ = savings_screen;
     family_screen_ = family_screen;
     call_screen_ = call_screen;
+
+    if (call_screen_) {
+        call_screen_->SetOnCallParent([this](const std::string& parent_role) {
+            ESP_LOGI(TAG, "Outgoing call requested to %s", parent_role.c_str());
+            BuddyCallOverlay::GetInstance().ShowOutgoingCall(
+                parent_role,
+                [this]() {
+                    ESP_LOGI(TAG, "Outgoing call cancelled by child");
+                    EndCall();
+                }
+            );
+            StartCall();
+        });
+    }
 
     // Set POSIX Timezone early (does not touch lwIP TCP/IP stack)
     setenv("TZ", "ICT-7", 1);
@@ -444,11 +459,13 @@ void BuddySyncService::HandleCallPayload(const std::string& subaction, cJSON* ro
             }
         );
     } else if (type == "call_connected" || type == "accept") {
-        ESP_LOGI(TAG, "Call is now ACTIVE");
+        ESP_LOGI(TAG, "Call is now ACTIVE -> Starting Audio Pipeline");
         BuddyCallOverlay::GetInstance().SetCallActive();
+        BuddyCallAudioService::GetInstance().StartCallAudio(broker_host_, broker_port_, device_id_);
     } else if (type == "call_ended" || type == "reject" || type == "end") {
-        ESP_LOGI(TAG, "Call is ENDED");
+        ESP_LOGI(TAG, "Call is ENDED -> Stopping Audio Pipeline");
         BuddyCallOverlay::GetInstance().EndCall();
+        BuddyCallAudioService::GetInstance().StopCallAudio();
     }
 }
 
@@ -469,6 +486,8 @@ void BuddySyncService::StartCall() {
 }
 
 void BuddySyncService::AcceptCall() {
+    BuddyCallAudioService::GetInstance().StartCallAudio(broker_host_, broker_port_, device_id_);
+
     if (!mqtt_ || !is_connected_) return;
 
     cJSON* root = cJSON_CreateObject();
@@ -484,6 +503,8 @@ void BuddySyncService::AcceptCall() {
 }
 
 void BuddySyncService::RejectCall(const std::string& reason) {
+    BuddyCallAudioService::GetInstance().StopCallAudio();
+
     if (!mqtt_ || !is_connected_) return;
 
     cJSON* root = cJSON_CreateObject();
@@ -500,6 +521,8 @@ void BuddySyncService::RejectCall(const std::string& reason) {
 }
 
 void BuddySyncService::EndCall() {
+    BuddyCallAudioService::GetInstance().StopCallAudio();
+
     if (!mqtt_ || !is_connected_) return;
 
     cJSON* root = cJSON_CreateObject();

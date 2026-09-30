@@ -415,10 +415,22 @@ function handleCallSignaling(msg) {
 }
 
 // UI Actions
-function startParentCall() {
+async function startParentCall() {
     if (!callWs || callWs.readyState !== WebSocket.OPEN) {
         alert('Chưa kết nối được với máy chủ cuộc gọi! Vui lòng thử lại sau vài giây.');
         return;
+    }
+
+    try {
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!audioContext) {
+            audioContext = new AudioContext({ sampleRate: 16000 });
+        }
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+    } catch (e) {
+        console.warn('AudioContext pre-init error:', e);
     }
 
     callState = 'calling';
@@ -436,7 +448,19 @@ function startParentCall() {
     log('📞 [Cuộc gọi] Đang gọi tới thiết bị của bé...', 'info');
 }
 
-function acceptIncomingCall() {
+async function acceptIncomingCall() {
+    try {
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!audioContext) {
+            audioContext = new AudioContext({ sampleRate: 16000 });
+        }
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+    } catch (e) {
+        console.warn('AudioContext resume error:', e);
+    }
+
     if (callWs && callWs.readyState === WebSocket.OPEN) {
         callWs.send(JSON.stringify({ type: 'call_accept' }));
     }
@@ -523,7 +547,12 @@ function toggleMuteMic() {
 async function startAudioStream() {
     try {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext({ sampleRate: 16000 });
+        if (!audioContext) {
+            audioContext = new AudioContext({ sampleRate: 16000 });
+        }
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
         nextPlayTime = audioContext.currentTime;
 
         mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -565,7 +594,13 @@ async function startAudioStream() {
 }
 
 function playIncomingAudioChunk(arrayBuffer) {
-    if (!audioContext) return;
+    if (!audioContext) {
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext({ sampleRate: 16000 });
+    }
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
 
     try {
         const int16Array = new Int16Array(arrayBuffer);

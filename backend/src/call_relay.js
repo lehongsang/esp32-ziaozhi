@@ -26,7 +26,7 @@ function attachCallRelayServer(httpServer) {
         const parsedUrl = url.parse(req.url, true);
         const query = parsedUrl.query;
         const clientType = query.type || 'parent'; // 'device' or 'parent'
-        const deviceId = query.deviceId || '1';
+        const deviceId = query.deviceId || 'default';
 
         console.log(`📞 [CallRelay] New connection: type=${clientType}, deviceId=${deviceId}`);
 
@@ -116,6 +116,8 @@ function attachCallRelayServer(httpServer) {
                         });
                         if (session.deviceWs && session.deviceWs.readyState === ws.OPEN) session.deviceWs.send(notifyMsg);
                         if (session.parentWs && session.parentWs.readyState === ws.OPEN) session.parentWs.send(notifyMsg);
+                        const { publishToDevice } = require('./mqtt');
+                        publishToDevice(deviceId, 'call/accept', { type: 'call_connected', deviceId });
                         console.log(`✅ [CallRelay] Call ACTIVE for device ${deviceId}`);
                         break;
                     }
@@ -129,6 +131,8 @@ function attachCallRelayServer(httpServer) {
                         });
                         if (session.deviceWs && session.deviceWs.readyState === ws.OPEN) session.deviceWs.send(rejectMsg);
                         if (session.parentWs && session.parentWs.readyState === ws.OPEN) session.parentWs.send(rejectMsg);
+                        const { publishToDevice } = require('./mqtt');
+                        publishToDevice(deviceId, 'call/reject', { type: 'call_rejected', deviceId, reason: msg.reason || 'Bận' });
                         break;
                     }
 
@@ -141,6 +145,8 @@ function attachCallRelayServer(httpServer) {
                         });
                         if (session.deviceWs && session.deviceWs.readyState === ws.OPEN) session.deviceWs.send(endMsg);
                         if (session.parentWs && session.parentWs.readyState === ws.OPEN) session.parentWs.send(endMsg);
+                        const { publishToDevice } = require('./mqtt');
+                        publishToDevice(deviceId, 'call/end', { type: 'call_ended', deviceId });
                         console.log(`⏹️ [CallRelay] Call ENDED for device ${deviceId}`);
                         break;
                     }
