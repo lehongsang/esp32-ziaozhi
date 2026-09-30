@@ -1091,7 +1091,7 @@ void LcdDisplay::SetStatus(const char* status) {
         tutor.SetListeningState(true);
     } else if (strcmp(status, Lang::Strings::SPEAKING) == 0) {
         tutor.SetSpeakingState(true);
-    } else if (strcmp(status, Lang::Strings::STANDBY) == 0 || strcmp(status, Lang::Strings::IDLE) == 0) {
+    } else if (strcmp(status, Lang::Strings::STANDBY) == 0) {
         tutor.SetIdleState();
     }
 }
