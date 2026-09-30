@@ -69,7 +69,7 @@ void BuddyCallAudioService::StartCallAudio(const std::string& host, int port, co
         }
     });
 
-    websocket_->OnDisconnected([this]() {
+    websocket_->OnDisconnected([]() {
         ESP_LOGW(TAG, "Call Audio WebSocket Disconnected");
     });
 
