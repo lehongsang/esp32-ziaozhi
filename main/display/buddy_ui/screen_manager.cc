@@ -4,6 +4,7 @@
 #include "buddy_reminder_scheduler.h"
 #include "settings.h"
 #include "board.h"
+#include "display.h"
 #include "application.h"
 #include <esp_log.h>
 

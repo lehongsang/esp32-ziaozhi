@@ -4,6 +4,7 @@
 #include <freertos/task.h>
 #include "application.h"
 #include "board.h"
+#include "display.h"
 #include "settings.h"
 #include "buddy_toast_overlay.h"
 #include "buddy_reminder_scheduler.h"
