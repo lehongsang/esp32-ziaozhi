@@ -22,12 +22,12 @@ public:
     EspMqtt();
     ~EspMqtt();
 
-    bool Connect(const std::string broker_address, int broker_port, const std::string client_id, const std::string username, const std::string password);
-    void Disconnect();
-    bool Publish(const std::string topic, const std::string payload, int qos = 0);
-    bool Subscribe(const std::string topic, int qos = 0);
-    bool Unsubscribe(const std::string topic);
-    bool IsConnected();
+    bool Connect(const std::string broker_address, int broker_port, const std::string client_id, const std::string username, const std::string password) override;
+    void Disconnect() override;
+    bool Publish(const std::string topic, const std::string payload, int qos = 0) override;
+    bool Subscribe(const std::string topic, int qos = 0) override;
+    bool Unsubscribe(const std::string topic) override;
+    bool IsConnected() override;
     int GetLastError() override;
 
 private:
