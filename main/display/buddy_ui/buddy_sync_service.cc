@@ -49,16 +49,11 @@ void BuddySyncService::Start(const std::string& broker_host, int broker_port) {
 
     xTaskCreate([](void* arg) {
         auto* self = static_cast<BuddySyncService*>(arg);
-        // Initial delay to let Wi-Fi stabilize
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        while (true) {
-            if (!self->is_connected_) {
-                self->ConnectMqtt();
-            }
-            vTaskDelay(pdMS_TO_TICKS(10000));
-        }
+        // Wait 3s for Wi-Fi and system audio/display to stabilize
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        self->ConnectMqtt();
         vTaskDelete(NULL);
-    }, "buddy_sync", 4096 * 2, this, 3, nullptr);
+    }, "buddy_sync", 3072, this, 3, nullptr);
 }
 
 void BuddySyncService::Stop() {
