@@ -248,7 +248,8 @@ void WifiBoard::SetPowerSaveLevel(PowerSaveLevel level) {
     WifiPowerSaveLevel wifi_level;
     switch (level) {
         case PowerSaveLevel::LOW_POWER:
-            wifi_level = WifiPowerSaveLevel::LOW_POWER;
+            // Use BALANCED (WIFI_PS_MIN_MODEM) to prevent MQTT PING timeouts on enterprise / IoT routers
+            wifi_level = WifiPowerSaveLevel::BALANCED;
             break;
         case PowerSaveLevel::BALANCED:
             wifi_level = WifiPowerSaveLevel::BALANCED;

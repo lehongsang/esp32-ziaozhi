@@ -31,6 +31,14 @@ void BuddyCallAudioService::StartCallAudio(SendCallback send_fn, const std::stri
 
     ESP_LOGI(TAG, "Starting Audio-over-MQTT for device %s (Topic: %s)...", device_id_.c_str(), up_topic_.c_str());
 
+    auto codec = Board::GetInstance().GetAudioCodec();
+    if (codec) {
+        codec->SetOutputVolume(95);
+        if (!codec->output_enabled()) {
+            codec->EnableOutput(true);
+        }
+    }
+
     // 1. Temporarily disable wake word detection and voice processing to prevent I2S conflict
     Application::GetInstance().GetAudioService().EnableWakeWordDetection(false);
     Application::GetInstance().GetAudioService().EnableVoiceProcessing(false);
@@ -40,7 +48,7 @@ void BuddyCallAudioService::StartCallAudio(SendCallback send_fn, const std::stri
         auto* self = static_cast<BuddyCallAudioService*>(arg);
         self->MicTask();
         vTaskDelete(NULL);
-    }, "call_mic", 2560, this, 5, &mic_task_handle_);
+    }, "call_mic", 3584, this, 5, &mic_task_handle_);
 }
 
 void BuddyCallAudioService::StopCallAudio() {
@@ -73,8 +81,8 @@ void BuddyCallAudioService::MicTask() {
 
     int sample_rate = codec->input_sample_rate();
     if (sample_rate <= 0) sample_rate = 16000;
-    // 20ms chunk = sample_rate / 50 samples
-    const int chunk_samples = sample_rate / 50;
+    // 40ms chunk = sample_rate / 25 samples (optimal for MQTT throughput and low latency)
+    const int chunk_samples = sample_rate / 25;
     int in_channels = codec->input_channels();
     std::vector<int16_t> input_buf(chunk_samples * in_channels);
 
@@ -84,18 +92,28 @@ void BuddyCallAudioService::MicTask() {
         if (codec->InputData(input_buf)) {
             if (send_fn_) {
                 if (in_channels == 2) {
-                    // Extract left channel for mono
+                    // Extract left channel for mono & apply 2.0x mic boost
                     std::vector<int16_t> mono_buf(chunk_samples);
                     for (int i = 0; i < chunk_samples; ++i) {
-                        mono_buf[i] = input_buf[i * 2];
+                        int32_t val = static_cast<int32_t>(input_buf[i * 2]) * 2;
+                        if (val > 32767) val = 32767;
+                        if (val < -32768) val = -32768;
+                        mono_buf[i] = static_cast<int16_t>(val);
                     }
                     send_fn_(up_topic_, std::string(reinterpret_cast<const char*>(mono_buf.data()), mono_buf.size() * sizeof(int16_t)));
                 } else {
-                    send_fn_(up_topic_, std::string(reinterpret_cast<const char*>(input_buf.data()), input_buf.size() * sizeof(int16_t)));
+                    std::vector<int16_t> mono_buf(chunk_samples);
+                    for (int i = 0; i < chunk_samples; ++i) {
+                        int32_t val = static_cast<int32_t>(input_buf[i]) * 2;
+                        if (val > 32767) val = 32767;
+                        if (val < -32768) val = -32768;
+                        mono_buf[i] = static_cast<int16_t>(val);
+                    }
+                    send_fn_(up_topic_, std::string(reinterpret_cast<const char*>(mono_buf.data()), mono_buf.size() * sizeof(int16_t)));
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     ESP_LOGI(TAG, "Call Mic Task exited");

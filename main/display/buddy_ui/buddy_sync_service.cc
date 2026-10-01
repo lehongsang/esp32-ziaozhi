@@ -24,8 +24,14 @@ BuddySyncService& BuddySyncService::GetInstance() {
 BuddySyncService::BuddySyncService() {
     Settings settings("buddy_sync", false);
     device_id_ = settings.GetString("device_id", "default");
-    broker_host_ = settings.GetString("broker_host", "esp32-ziaozhi.onrender.com");
-    broker_port_ = settings.GetInt("broker_port", 443);
+    broker_host_ = settings.GetString("broker_host", "192.168.188.219");
+    if (broker_host_ == "esp32-ziaozhi.onrender.com" || broker_host_ == "192.168.1.199") {
+        broker_host_ = "192.168.188.219";
+    }
+    broker_port_ = settings.GetInt("broker_port", 1883);
+    if (broker_port_ == 443 && broker_host_ == "192.168.188.219") {
+        broker_port_ = 1883;
+    }
 }
 
 BuddySyncService::~BuddySyncService() {

@@ -55,6 +55,11 @@ aedes.on('clientDisconnect', (client) => {
 
 // Handle incoming messages from Device
 aedes.on('publish', (packet, client) => {
+    // If packet comes from internal server publish (client is null/undefined), do not re-process
+    if (!client) {
+        return;
+    }
+
     const topic = packet.topic;
 
     // Handle binary voice call audio packet from ESP32 -> Web Browser
@@ -91,7 +96,7 @@ aedes.on('publish', (packet, client) => {
             const deviceId = parts[1];
             const channel = parts[2];
 
-            if (channel === 'time') {
+            if (channel === 'time' && (parts[3] === 'get' || parts[3] === 'sync' || parts[3] === 'request' || !parts[3])) {
                 // Device requested real time sync
                 publishToDevice(deviceId, 'time/set', { timestamp: Date.now(), timezone_offset: 420 });
                 console.log(`⏰ Synchronized real time to device ${deviceId}: ${new Date().toLocaleString('vi-VN')}`);
@@ -162,44 +167,11 @@ aedes.on('publish', (packet, client) => {
                     }
                 }
             } else if (channel === 'status') {
-                // Periodic status heartbeat
+                // Periodic status heartbeat from device
                 const { battery, level, xp } = payload;
                 db.run(`UPDATE devices SET battery = ?, level = ?, xp = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?`,
                     [battery, level, xp, deviceId]);
                 broadcastEvent('device_status', { deviceId, battery, level, xp });
-
-                // Sync exact real time
-                publishToDevice(deviceId, 'time/set', { timestamp: Date.now(), timezone_offset: 420 });
-
-                // Auto hydrate full state to newly connected device
-                db.all(`SELECT id, title, progress_text, scheduled_time, start_time, duration, reward_stars, category, completed FROM quests WHERE device_id = ? ORDER BY id ASC`, [deviceId], (err, quests) => {
-                    if (!err && quests && quests.length > 0) {
-                        const formattedQuests = quests.map(q => ({
-                            id: q.id,
-                            title: q.title,
-                            progress_text: q.progress_text,
-                            scheduled_time: q.scheduled_time || '',
-                            start_time: q.start_time || '',
-                            duration: q.duration || 20,
-                            reward_stars: q.reward_stars || 1,
-                            category: q.category || 'habit',
-                            completed: q.completed === 1
-                        }));
-                        publishToDevice(deviceId, 'quests/set', { quests: formattedQuests });
-                    }
-                });
-
-                db.get(`SELECT goal_type, goal_name, current_amount, target_amount, currency FROM savings WHERE device_id = ?`, [deviceId], (err, sav) => {
-                    if (!err && sav) {
-                        publishToDevice(deviceId, 'savings/set', sav);
-                    }
-                });
-
-                db.get(`SELECT sender, message, timestamp FROM family_messages WHERE device_id = ? ORDER BY id DESC LIMIT 1`, [deviceId], (err, msg) => {
-                    if (!err && msg) {
-                        publishToDevice(deviceId, 'family/message', msg);
-                    }
-                });
             }
         }
     } catch (e) {

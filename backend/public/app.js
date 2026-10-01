@@ -557,11 +557,13 @@ function toggleMuteMic() {
 }
 
 // Audio Stream Capture & Playback
+const TARGET_SAMPLE_RATE = 24000; // Match ESP32 I2S codec rate
+
 async function startAudioStream() {
     try {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!audioContext) {
-            audioContext = new AudioContext({ sampleRate: 16000 });
+            audioContext = new AudioContext();
         }
         if (audioContext.state === 'suspended') {
             await audioContext.resume();
@@ -570,7 +572,6 @@ async function startAudioStream() {
 
         mediaStream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                sampleRate: 16000,
                 channelCount: 1,
                 echoCancellation: true,
                 noiseSuppression: true,
@@ -579,17 +580,31 @@ async function startAudioStream() {
         });
 
         const micSource = audioContext.createMediaStreamSource(mediaStream);
-        scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
+        const bufferSize = 2048;
+        scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+        const currentSampleRate = audioContext.sampleRate;
+        const resampleRatio = TARGET_SAMPLE_RATE / currentSampleRate;
 
         scriptProcessor.onaudioprocess = (e) => {
             if (callState !== 'active' || isMicMuted) return;
 
             const inputData = e.inputBuffer.getChannelData(0);
-            // Convert Float32 to 16-bit PCM buffer
-            const pcm16 = new Int16Array(inputData.length);
-            for (let i = 0; i < inputData.length; i++) {
-                let s = Math.max(-1, Math.min(1, inputData[i]));
-                pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            const targetLength = Math.floor(inputData.length * resampleRatio);
+            const pcm16 = new Int16Array(targetLength);
+
+            // Linear interpolation resampling with 2.5x gain boost for loud & crisp voice
+            const GAIN_BOOST = 2.5;
+            for (let i = 0; i < targetLength; i++) {
+                const srcIndex = i / resampleRatio;
+                const index0 = Math.floor(srcIndex);
+                const index1 = Math.min(index0 + 1, inputData.length - 1);
+                const frac = srcIndex - index0;
+                const sample = (inputData[index0] * (1 - frac) + inputData[index1] * frac) * GAIN_BOOST;
+
+                // Clamp to [-1.0, 1.0]
+                const clamped = Math.max(-1.0, Math.min(1.0, sample));
+                pcm16[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF;
             }
 
             if (callWs && callWs.readyState === WebSocket.OPEN) {
@@ -597,8 +612,14 @@ async function startAudioStream() {
             }
         };
 
+        // Connect micSource -> scriptProcessor -> silentGain -> destination
+        // (Prevents microphone audio from blasting out of the parent's own speakers!)
+        const silentGain = audioContext.createGain();
+        silentGain.gain.value = 0.0;
+
         micSource.connect(scriptProcessor);
-        scriptProcessor.connect(audioContext.destination);
+        scriptProcessor.connect(silentGain);
+        silentGain.connect(audioContext.destination);
 
     } catch (err) {
         console.error('Audio capture failed:', err);
@@ -609,7 +630,7 @@ async function startAudioStream() {
 function playIncomingAudioChunk(arrayBuffer) {
     if (!audioContext) {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext({ sampleRate: 16000 });
+        audioContext = new AudioContext();
     }
     if (audioContext.state === 'suspended') {
         audioContext.resume();
@@ -618,11 +639,14 @@ function playIncomingAudioChunk(arrayBuffer) {
     try {
         const int16Array = new Int16Array(arrayBuffer);
         const float32Array = new Float32Array(int16Array.length);
+        const GAIN_IN = 2.0; // Boost ESP32 mic audio
         for (let i = 0; i < int16Array.length; i++) {
-            float32Array[i] = int16Array[i] / 32768.0;
+            let s = (int16Array[i] / 32768.0) * GAIN_IN;
+            float32Array[i] = Math.max(-1.0, Math.min(1.0, s));
         }
 
-        const audioBuffer = audioContext.createBuffer(1, float32Array.length, 16000);
+        // ESP32 sends 24000Hz (or 16000Hz) audio
+        const audioBuffer = audioContext.createBuffer(1, float32Array.length, TARGET_SAMPLE_RATE);
         audioBuffer.copyToChannel(float32Array, 0);
 
         const source = audioContext.createBufferSource();
@@ -631,7 +655,7 @@ function playIncomingAudioChunk(arrayBuffer) {
 
         const now = audioContext.currentTime;
         if (nextPlayTime < now) {
-            nextPlayTime = now + 0.02;
+            nextPlayTime = now + 0.04; // 40ms jitter buffer
         }
         source.start(nextPlayTime);
         nextPlayTime += audioBuffer.duration;

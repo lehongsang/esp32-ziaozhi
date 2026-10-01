@@ -136,7 +136,11 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     ESP_LOGI(TAG, "Initialize LVGL port");
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
     port_cfg.task_priority = 4;
+#if CONFIG_SPIRAM
     port_cfg.task_stack = 16384;
+#else
+    port_cfg.task_stack = 8192;
+#endif
 #if CONFIG_SOC_CPU_CORES_NUM > 1
     port_cfg.task_affinity = 1;
 #endif
@@ -147,8 +151,13 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
         .io_handle = panel_io_,
         .panel_handle = panel_,
         .control_handle = nullptr,
+#if CONFIG_SPIRAM
         .buffer_size = static_cast<uint32_t>(width_ * 20),
         .double_buffer = true,
+#else
+        .buffer_size = static_cast<uint32_t>(width_ * 12),
+        .double_buffer = false,
+#endif
         .trans_size = 0,
         .hres = static_cast<uint32_t>(width_),
         .vres = static_cast<uint32_t>(height_),
