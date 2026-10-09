@@ -14,6 +14,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Swagger Documentation
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.get('/api/swagger.json', (req, res) => res.json(swaggerDocument));
+
 // Serve API Routes
 app.use('/api', routes);
 
@@ -52,6 +59,7 @@ server.listen(httpPort, () => {
     console.log(`\n======================================================`);
     console.log(`🚀 MB BUDDY LIVE SYNC & CALL SERVER READY!`);
     console.log(`🌐 Web Parent Dashboard: http://localhost:${httpPort}`);
+    console.log(`📑 Swagger API Docs:     http://localhost:${httpPort}/api-docs`);
     console.log(`📡 MQTT Broker (TCP):    Port 1883`);
     console.log(`🌐 MQTT Broker (WS):     ws://localhost:${httpPort}/mqtt`);
     console.log(`📞 Voice Call Relay:     ws://localhost:${httpPort}/call`);

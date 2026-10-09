@@ -1,0 +1,559 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MB Buddy Live Sync & Call Server API",
+    "description": "Tài liệu API Swagger/OpenAPI cho hệ thống Backend MB Buddy S3. Bao gồm các REST API quản lý thiết bị, nhiệm vụ (Quests), heo đất (Savings), tin nhắn gia đình (Family Moments) và hỗ trợ tích hợp với Web Dashboard / ESP32.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "MB Buddy Development Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Device State",
+      "description": "Đồng bộ toàn bộ trạng thái thiết bị (Boot / Full Sync)"
+    },
+    {
+      "name": "Quests (Nhiệm vụ hôm nay)",
+      "description": "Quản lý nhiệm vụ, công việc học tập và thói quen cho bé (Màn 2)"
+    },
+    {
+      "name": "Savings (Heo đất & Mục tiêu)",
+      "description": "Quản lý số dư heo đất, thưởng quà và mục tiêu ước mơ (Màn 4)"
+    },
+    {
+      "name": "Family Moments (Tin nhắn gia đình)",
+      "description": "Gửi tin nhắn động viên, lời chúc từ ba mẹ và nhận tim từ bé (Màn 5)"
+    },
+    {
+      "name": "Realtime Events",
+      "description": "Server-Sent Events (SSE) stream cho Web Dashboard"
+    }
+  ],
+  "paths": {
+    "/events": {
+      "get": {
+        "tags": ["Realtime Events"],
+        "summary": "Đăng ký nhận luồng sự kiện Realtime (SSE)",
+        "description": "Mở kết nối Server-Sent Events (text/event-stream) để Web Dashboard nhận thông báo realtime khi có sự kiện từ thiết bị ESP32.",
+        "responses": {
+          "200": {
+            "description": "Stream kết nối thành công (text/event-stream)",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "example": "data: {\"type\":\"quest_completed\",\"data\":{\"deviceId\":\"default\",\"questId\":\"q_math\"},\"timestamp\":1775707200000}\n\n"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/state": {
+      "get": {
+        "tags": ["Device State"],
+        "summary": "Lấy toàn bộ trạng thái của thiết bị (Full Sync)",
+        "description": "Được ESP32 gọi khi khởi động hoặc Web Dashboard tải lần đầu để đồng bộ tất cả dữ liệu.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID định danh thiết bị (ví dụ: `default` hoặc `MB_BUDDY_01`)",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin trạng thái tổng hợp thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFullStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/quests": {
+      "get": {
+        "tags": ["Quests (Nhiệm vụ hôm nay)"],
+        "summary": "Lấy danh sách nhiệm vụ hôm nay",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách các nhiệm vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Quest"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Quests (Nhiệm vụ hôm nay)"],
+        "summary": "Thêm mới hoặc cập nhật nhiệm vụ",
+        "description": "Thêm hoặc ghi đè nhiệm vụ theo ID, tự động publish MQTT `buddy/{id}/quests/set` để ESP32 cập nhật tức thì.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Device ID",
+            "schema": {
+              "type": "string",
+              "default": "default"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cập nhật thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "quests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Quest" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thiếu thông tin bắt buộc (id, title)"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Quests (Nhiệm vụ hôm nay)"],
+        "summary": "Xóa toàn bộ nhiệm vụ của thiết bị",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đã xóa toàn bộ nhiệm vụ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "quests": { "type": "array", "items": {}, "example": [] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/quests/{questId}/toggle": {
+      "post": {
+        "tags": ["Quests (Nhiệm vụ hôm nay)"],
+        "summary": "Đảo trạng thái hoàn thành của nhiệm vụ (Hoàn thành / Chưa)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          },
+          {
+            "name": "questId",
+            "in": "path",
+            "required": true,
+            "description": "Mã nhiệm vụ (ví dụ: `q_math`)",
+            "schema": { "type": "string", "example": "q_math" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật trạng thái thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "quests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Quest" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy nhiệm vụ"
+          }
+        }
+      }
+    },
+    "/device/{id}/quests/{questId}": {
+      "delete": {
+        "tags": ["Quests (Nhiệm vụ hôm nay)"],
+        "summary": "Xóa 1 nhiệm vụ theo ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          },
+          {
+            "name": "questId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "example": "q_math" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "quests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Quest" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/savings": {
+      "get": {
+        "tags": ["Savings (Heo đất & Mục tiêu)"],
+        "summary": "Lấy thông tin heo đất và mục tiêu ước mơ",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin heo đất",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Savings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/savings/deposit": {
+      "post": {
+        "tags": ["Savings (Heo đất & Mục tiêu)"],
+        "summary": "Nạp tiền vào heo đất (Thưởng nhiệm vụ / Quà tặng)",
+        "description": "Thêm số tiền tiết kiệm và tự động đồng bộ MQTT xuống ESP32.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount": { "type": "integer", "example": 50000, "description": "Số tiền thêm vào (VND)" },
+                  "note": { "type": "string", "example": "Thưởng dọn bàn học", "description": "Ghi chú lý do thưởng" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nạp tiền thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "savings": { "$ref": "#/components/schemas/Savings" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/savings/goal": {
+      "put": {
+        "tags": ["Savings (Heo đất & Mục tiêu)"],
+        "summary": "Thay đổi Mục tiêu Ước mơ (Dream Goal)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "goal_type": { "type": "integer", "example": 2, "description": "Mã icon loại mục tiêu" },
+                  "goal_name": { "type": "string", "example": "Xe đạp thể thao", "description": "Tên món quà ước mơ" },
+                  "target_amount": { "type": "integer", "example": 2500000, "description": "Số tiền cần tích lũy (VND)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cập nhật mục tiêu thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "savings": { "$ref": "#/components/schemas/Savings" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device/{id}/family/message": {
+      "get": {
+        "tags": ["Family Moments (Tin nhắn gia đình)"],
+        "summary": "Lấy tin nhắn gia đình mới nhất",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tin nhắn gần nhất",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyMessage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Family Moments (Tin nhắn gia đình)"],
+        "summary": "Gửi tin nhắn động viên mới xuống thiết bị",
+        "description": "Gửi lời nhắn từ phụ huynh, đẩy thông báo MQTT `buddy/{id}/family/message` tức thì để hiển thị pop-up trên ESP32.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "default": "default" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "sender": { "type": "string", "example": "Mẹ", "description": "Tên người gửi" },
+                  "sender_role": { "type": "string", "enum": ["mom", "dad", "family"], "example": "mom", "description": "Vai trò người gửi" },
+                  "message": { "type": "string", "example": "Mẹ rất tự hào về con! 💖", "description": "Nội dung lời nhắn" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gửi tin nhắn thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "$ref": "#/components/schemas/FamilyMessage" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nội dung tin nhắn không được để trống"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "default" },
+          "name": { "type": "string", "example": "MB Buddy S3" },
+          "battery": { "type": "integer", "example": 95 },
+          "level": { "type": "integer", "example": 3 },
+          "xp": { "type": "integer", "example": 240 },
+          "last_seen": { "type": "string", "example": "2026-10-09 10:00:00" }
+        }
+      },
+      "Quest": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "q_math" },
+          "device_id": { "type": "string", "example": "default" },
+          "title": { "type": "string", "example": "Học Toán" },
+          "progress_text": { "type": "string", "example": "" },
+          "scheduled_time": { "type": "string", "example": "17:00 - 17:20" },
+          "start_time": { "type": "string", "example": "17:00" },
+          "duration": { "type": "integer", "example": 20 },
+          "reward_stars": { "type": "integer", "example": 1 },
+          "category": { "type": "string", "example": "math" },
+          "remind_before": { "type": "integer", "example": 30 },
+          "completed": { "type": "integer", "enum": [0, 1], "example": 1 },
+          "created_at": { "type": "string", "example": "2026-10-09 08:00:00" }
+        }
+      },
+      "QuestInput": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "type": "string", "example": "q_read_02", "description": "Mã ID nhiệm vụ duy nhất" },
+          "title": { "type": "string", "example": "Đọc sách 20 phút", "description": "Tên nhiệm vụ" },
+          "progress_text": { "type": "string", "example": "0/1", "description": "Tiến độ hiển thị phụ" },
+          "scheduled_time": { "type": "string", "example": "19:30 - 19:50", "description": "Khoảng thời gian thực hiện" },
+          "start_time": { "type": "string", "example": "19:30", "description": "Thời gian bắt đầu (HH:mm)" },
+          "duration": { "type": "integer", "example": 20, "description": "Thời lượng (phút)" },
+          "reward_stars": { "type": "integer", "example": 1, "description": "Số sao thưởng" },
+          "category": { "type": "string", "example": "read", "description": "Phân loại (math, read, pack, habit...)" },
+          "remind_before": { "type": "integer", "example": 15, "description": "Nhắc trước (phút)" }
+        }
+      },
+      "Savings": {
+        "type": "object",
+        "properties": {
+          "device_id": { "type": "string", "example": "default" },
+          "current_amount": { "type": "integer", "example": 850000 },
+          "target_amount": { "type": "integer", "example": 2000000 },
+          "goal_type": { "type": "integer", "example": 1 },
+          "goal_name": { "type": "string", "example": "Smart Robot" },
+          "currency": { "type": "string", "example": "d" },
+          "updated_at": { "type": "string", "example": "2026-10-09 10:00:00" }
+        }
+      },
+      "FamilyMessage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "device_id": { "type": "string", "example": "default" },
+          "sender": { "type": "string", "example": "Mom" },
+          "sender_role": { "type": "string", "enum": ["mom", "dad", "family"], "example": "mom" },
+          "avatar": { "type": "string", "example": "mom_avatar.png" },
+          "message": { "type": "string", "example": "Mẹ rất tự hào về con! 💖" },
+          "timestamp": { "type": "integer", "example": 1775707200 },
+          "liked": { "type": "integer", "enum": [0, 1], "example": 1 }
+        }
+      },
+      "DeviceFullStateResponse": {
+        "type": "object",
+        "properties": {
+          "device": { "$ref": "#/components/schemas/Device" },
+          "quests": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Quest" }
+          },
+          "savings": { "$ref": "#/components/schemas/Savings" },
+          "family_message": { "$ref": "#/components/schemas/FamilyMessage" }
+        }
+      }
+    }
+  }
+}
